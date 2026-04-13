@@ -36,6 +36,7 @@ export interface Database {
           payload?: MonthlyReportPayload | Record<string, unknown>
           status?: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
+        Relationships: []
       }
       form_keys: {
         Row: {
@@ -63,6 +64,7 @@ export interface Database {
           report_year?: number
           is_active?: boolean
         }
+        Relationships: []
       }
       pcs: {
         Row: {
@@ -76,6 +78,7 @@ export interface Database {
         Update: {
           pc_name?: string
         }
+        Relationships: []
       }
     }
     Views: Record<string, never>
