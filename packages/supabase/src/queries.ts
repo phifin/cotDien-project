@@ -1,4 +1,4 @@
-import { supabase } from './client.js'
+import { getSupabaseBrowserClient } from './client.js'
 import { parseImportedJson, type MonthlyReportPayload, type ParsedSubmissionEntry } from '@repo/shared/domain'
 import type { Database } from './types.js'
 
@@ -230,6 +230,7 @@ export async function fetchSubmissionsByPeriodWithDebug(
   month: number,
   options: { includeDebugPayloads?: boolean } = {},
 ): Promise<{ entries: ParsedSubmissionEntry[]; debug: SubmissionFetchDebug }> {
+  const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase
     .from('submissions')
     .select('*')
@@ -277,6 +278,7 @@ export async function fetchSubmissionsForCompare(
   periodA: { year: number; month: number },
   periodB: { year: number; month: number },
 ) {
+  const supabase = getSupabaseBrowserClient()
   const [resA, resB] = await Promise.all([
     supabase
       .from('submissions')
@@ -312,6 +314,7 @@ export async function fetchSubmissionsForCompare(
  * Pushes exactly one Canonical Payload object into the DB flat row mapping.
  */
 export async function insertSubmission(payload: MonthlyReportPayload) {
+  const supabase = getSupabaseBrowserClient()
   const { data, error } = await supabase
     .from('submissions')
     .insert({
@@ -333,6 +336,7 @@ export async function insertSubmission(payload: MonthlyReportPayload) {
 }
 
 export async function listFormKeys(): Promise<FormKeyRow[]> {
+  const supabase = getSupabaseBrowserClient()
   const { data, error } = await (supabase
     .from('form_keys' as any)
     .select('*')
@@ -343,6 +347,7 @@ export async function listFormKeys(): Promise<FormKeyRow[]> {
 }
 
 export async function listPcs(): Promise<PcRow[]> {
+  const supabase = getSupabaseBrowserClient()
   const { data, error } = await (supabase
     .from('pcs' as any)
     .select('pc_code, pc_name')
@@ -359,6 +364,7 @@ export async function createFormKey(input: {
   reportYear: number
   isActive?: boolean
 }): Promise<FormKeyRow> {
+  const supabase = getSupabaseBrowserClient()
   const { data, error } = await ((supabase
     .from('form_keys' as any)
     .insert({
@@ -376,6 +382,7 @@ export async function createFormKey(input: {
 }
 
 export async function setFormKeyActive(id: string, isActive: boolean): Promise<void> {
+  const supabase = getSupabaseBrowserClient()
   const formKeysTable = supabase.from('form_keys' as any) as unknown as {
     update: (values: Record<string, unknown>) => { eq: (column: string, value: string) => Promise<{ error: Error | null }> }
   }

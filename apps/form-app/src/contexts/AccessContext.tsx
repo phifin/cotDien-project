@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@repo/supabase/client'
+import { supabase } from '../lib/supabaseClient'
 
 export interface AccessContextData {
   pcCode: string

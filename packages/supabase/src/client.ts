@@ -1,39 +1,27 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from './types.js'
 
-// Notice: In Vite, import.meta.env is replaced at build time. 
-// For this to work in a shared package, the consuming app must use Vite (which we do).
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
-const isDev = Boolean(import.meta.env.DEV)
-
-// TEMP DEBUG: Vite env injection status (safe: no secret values logged)
-console.info('[supabase] env check:', {
-  hasViteSupabaseUrl: Boolean(supabaseUrl),
-  hasViteSupabaseAnonKey: Boolean(supabaseAnonKey),
-})
-
-if (typeof window !== 'undefined') {
-  ;(window as any).__DEBUG_ENV__ = {
-    url: supabaseUrl,
-    anon: supabaseAnonKey ? 'present' : 'missing',
-  }
-}
-
-if ((!supabaseUrl || !supabaseAnonKey) && isDev) {
-  console.warn(
-    '[supabase] Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY environment variables.\n' +
-    'Please add them to your .env file in the consuming app.'
-  )
-}
-
-export const supabase = createClient<Database>(
-  supabaseUrl || '',
-  supabaseAnonKey || '',
-  {
+export function createSupabaseBrowserClient(input: {
+  url: string
+  anonKey: string
+}): SupabaseClient<Database> {
+  return createClient<Database>(input.url, input.anonKey, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
     },
+  })
+}
+
+let activeSupabaseClient: SupabaseClient<Database> | null = null
+
+export function setSupabaseBrowserClient(client: SupabaseClient<Database>): void {
+  activeSupabaseClient = client
+}
+
+export function getSupabaseBrowserClient(): SupabaseClient<Database> {
+  if (!activeSupabaseClient) {
+    throw new Error('Supabase client is not initialized. Initialize it in app-level bootstrap first.')
   }
-)
+  return activeSupabaseClient
+}

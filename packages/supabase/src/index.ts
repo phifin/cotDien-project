@@ -6,6 +6,6 @@
  *   import type { Database } from '@repo/supabase/types'
  */
 
-export { createSupabaseClient, getSupabaseClient } from './client.js'
+export { createSupabaseBrowserClient, setSupabaseBrowserClient, getSupabaseBrowserClient } from './client.js'
 export type { Database } from './types.js'
 export * from './queries.js'
