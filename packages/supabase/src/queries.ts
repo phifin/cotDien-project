@@ -376,10 +376,13 @@ export async function createFormKey(input: {
 }
 
 export async function setFormKeyActive(id: string, isActive: boolean): Promise<void> {
-  const { error } = await ((supabase
-    .from('form_keys' as any)
-    .update({ is_active: isActive } as any)
-    .eq('id', id)) as any)
+  const formKeysTable = supabase.from('form_keys' as any) as unknown as {
+    update: (values: Record<string, unknown>) => { eq: (column: string, value: string) => Promise<{ error: Error | null }> }
+  }
+
+  const { error } = await formKeysTable
+    .update({ is_active: isActive })
+    .eq('id', id)
 
   if (error) throw error
 }

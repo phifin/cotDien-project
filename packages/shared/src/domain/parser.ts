@@ -12,7 +12,7 @@ export function parseImportedJson(input: unknown): Result<MonthlyReportPayload, 
   if (parsed.success) {
     return ok(parsed.data)
   }
-  return err(parsed.error)
+  return err<ZodError>(parsed.error)
 }
 
 /**
@@ -154,8 +154,8 @@ export function validateImportedJsonAgainstContext(
   }
 
   if (mismatches.length > 0) {
-    return err(mismatches)
+    return err<ContextMismatch[]>(mismatches)
   }
 
-  return ok(true)
+  return ok<true>(true)
 }

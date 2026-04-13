@@ -41,8 +41,8 @@ export function useDraftStorage(accessContext: AccessContextData) {
           && Array.isArray(parsed.rows)
 
         if (isMatchingContext) {
-          setPendingRows(parsed.rows)
-          setSavedAt(parsed.savedAt)
+          setPendingRows(parsed.rows ?? null)
+          setSavedAt(parsed.savedAt ?? null)
         }
       }
     } catch (e) {

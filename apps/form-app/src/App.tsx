@@ -27,6 +27,7 @@ function unflattenRow(flatRow: Record<string, string>): Record<string, unknown> 
 
     for (let i = 0; i < parts.length; i += 1) {
       const part = parts[i]
+      if (!part) continue
       const isLeaf = i === parts.length - 1
       if (isLeaf) {
         cursor[part] = value
@@ -87,7 +88,9 @@ function downloadFile(content: string, fileName: string, mimeType: string): void
 
 function toCsv(records: Array<Record<string, string | number | null>>): string {
   if (records.length === 0) return ''
-  const headers = Object.keys(records[0])
+  const firstRow = records[0]
+  if (!firstRow) return ''
+  const headers = Object.keys(firstRow)
   const lines = [headers.join(',')]
 
   for (const row of records) {
