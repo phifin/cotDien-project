@@ -1,6 +1,5 @@
 import type { ZodError } from 'zod'
 import { ok, err, type Result } from '../types/index.js'
-import { PARTNER_CODES } from './constants.js'
 import { MonthlyReportPayloadSchema } from './schema.js'
 import type { MonthlyReportPayload, PcIdentity, ReportPeriod } from './types.js'
 
@@ -26,7 +25,7 @@ export function parseImportedJson(input: unknown): Result<MonthlyReportPayload, 
 export function normalizeSubmissionPayload(
   raw: unknown = {},
   fallbackIdentity?: PcIdentity,
-  fallbackPeriod?: ReportPeriod,
+  _fallbackPeriod?: ReportPeriod,
 ): MonthlyReportPayload {
   const safeData: Partial<MonthlyReportPayload> = (
     raw && typeof raw === 'object' && !Array.isArray(raw)
@@ -34,63 +33,44 @@ export function normalizeSubmissionPayload(
       : {}
   )
 
-  const partnerCode = (
-    typeof safeData.general?.partnerCode === 'string'
-    && (PARTNER_CODES as readonly string[]).includes(safeData.general.partnerCode)
-  )
-    ? safeData.general.partnerCode
-    : 'KHAC'
-
   return {
-    period: {
-      month: safeData.period?.month ?? fallbackPeriod?.month ?? new Date().getMonth() + 1,
-      year: safeData.period?.year ?? fallbackPeriod?.year ?? new Date().getFullYear(),
-    },
-    identity: {
-      pcCode: safeData.identity?.pcCode ?? fallbackIdentity?.pcCode ?? '',
-      pcName: safeData.identity?.pcName ?? fallbackIdentity?.pcName ?? '',
+    notes: {
+      ghi_chu: safeData.notes?.ghi_chu ?? '',
     },
     general: {
-      partnerCode,
-      contactPerson: safeData.general?.contactPerson ?? '',
-      contactPhone: safeData.general?.contactPhone ?? '',
+      ten_pc: safeData.general?.ten_pc ?? fallbackIdentity?.pcName ?? '',
+      doi_tac: safeData.general?.doi_tac ?? '',
+      doanh_thu_ke_hoach_nam: safeData.general?.doanh_thu_ke_hoach_nam ?? 0,
     },
     contract: {
-      contractNumber: safeData.contract?.contractNumber ?? '',
-      signedDate: safeData.contract?.signedDate ?? undefined,
-      validUntil: safeData.contract?.validUntil ?? undefined,
+      so_hd_phu_luc_hop_dong: safeData.contract?.so_hd_phu_luc_hop_dong ?? '',
+      ngay_ky_hd_plhd: safeData.contract?.ngay_ky_hd_plhd ?? '',
+      hieu_luc_den: safeData.contract?.hieu_luc_den ?? '',
+      gia_tri_hop_dong_nam: safeData.contract?.gia_tri_hop_dong_nam ?? 0,
     },
-    execution: safeData.execution ?? {}, // Guarantee it's at least an empty map
-    poleQuantities: {
-      totalPoles: safeData.poleQuantities?.totalPoles ?? 0,
-      sharedPoles: safeData.poleQuantities?.sharedPoles ?? 0,
-      newlyAdded: safeData.poleQuantities?.newlyAdded ?? 0,
-      heightBuckets: {
-        below8_5m: safeData.poleQuantities?.heightBuckets?.below8_5m ?? 0,
-        from8_5mTo10_5m: safeData.poleQuantities?.heightBuckets?.from8_5mTo10_5m ?? 0,
-        from10_5mTo12_5m: safeData.poleQuantities?.heightBuckets?.from10_5mTo12_5m ?? 0,
-        above12_5m: safeData.poleQuantities?.heightBuckets?.above12_5m ?? 0,
-      }
+    execution: {
+      closing_balance: safeData.execution?.closing_balance ?? 0,
+      generated_by_year: safeData.execution?.generated_by_year ?? {},
+      collected_by_year: safeData.execution?.collected_by_year ?? {},
+      opening_balance_by_year: safeData.execution?.opening_balance_by_year ?? {},
     },
-    revenueResult: {
-      expectedRevenue: safeData.revenueResult?.expectedRevenue ?? 0,
-      actualCollected: safeData.revenueResult?.actualCollected ?? 0,
-      currency: safeData.revenueResult?.currency ?? 'VND',
+    debt_analysis: {
+      duoi_6_thang: safeData.debt_analysis?.duoi_6_thang ?? 0,
+      tu_6_den_duoi_12_thang: safeData.debt_analysis?.tu_6_den_duoi_12_thang ?? 0,
+      tu_12_den_duoi_24_thang: safeData.debt_analysis?.tu_12_den_duoi_24_thang ?? 0,
+      tu_24_den_duoi_36_thang: safeData.debt_analysis?.tu_24_den_duoi_36_thang ?? 0,
+      tren_36_thang: safeData.debt_analysis?.tren_36_thang ?? 0,
     },
-    debtAnalysis: {
-      totalDebt: safeData.debtAnalysis?.totalDebt ?? 0,
-      overdueDebt: safeData.debtAnalysis?.overdueDebt ?? 0,
-      debtClassification: safeData.debtAnalysis?.debtClassification ?? undefined,
-      yearlyDebts: safeData.debtAnalysis?.yearlyDebts ?? {},
-      agingBuckets: {
-        below6Months: safeData.debtAnalysis?.agingBuckets?.below6Months ?? 0,
-        from6To12Months: safeData.debtAnalysis?.agingBuckets?.from6To12Months ?? 0,
-        from12To24Months: safeData.debtAnalysis?.agingBuckets?.from12To24Months ?? 0,
-        from24To36Months: safeData.debtAnalysis?.agingBuckets?.from24To36Months ?? 0,
-        above36Months: safeData.debtAnalysis?.agingBuckets?.above36Months ?? 0,
-      }
+    revenue_result: {
+      doanh_thu_thuc_hien_nam: safeData.revenue_result?.doanh_thu_thuc_hien_nam ?? 0,
+      ti_le_thuc_hien: safeData.revenue_result?.ti_le_thuc_hien ?? 0,
     },
-    notes: safeData.notes ?? '',
+    pole_quantities: {
+      duoi_8_5m: safeData.pole_quantities?.duoi_8_5m ?? 0,
+      tu_8_5_den_10_5m: safeData.pole_quantities?.tu_8_5_den_10_5m ?? 0,
+      tu_10_5_den_12_5m: safeData.pole_quantities?.tu_10_5_den_12_5m ?? 0,
+      tren_12_5m: safeData.pole_quantities?.tren_12_5m ?? 0,
+    },
   }
 }
 
@@ -127,41 +107,9 @@ export interface ContextMismatch {
  * Target Rule: js-early-exit - Returns err immediately on first collection of mismatches without running side effects.
  */
 export function validateImportedJsonAgainstContext(
-  payload: MonthlyReportPayload,
-  context: ValidationContext,
+  _payload: MonthlyReportPayload,
+  _context: ValidationContext,
 ): Result<true, ContextMismatch[]> {
-  const mismatches: ContextMismatch[] = []
-
-  if (payload.identity.pcCode !== context.expectedPcCode) {
-    mismatches.push({
-      field: 'pcCode',
-      expected: context.expectedPcCode,
-      actual: payload.identity.pcCode,
-      message: `File belongs to PC '${payload.identity.pcCode}', expected '${context.expectedPcCode}'.`,
-    })
-  }
-
-  if (payload.period.year !== context.expectedYear) {
-    mismatches.push({
-      field: 'year',
-      expected: context.expectedYear,
-      actual: payload.period.year,
-      message: `File is for year ${String(payload.period.year)}, expected ${String(context.expectedYear)}.`,
-    })
-  }
-
-  if (payload.period.month !== context.expectedMonth) {
-    mismatches.push({
-      field: 'month',
-      expected: context.expectedMonth,
-      actual: payload.period.month,
-      message: `File is for month ${String(payload.period.month)}, expected ${String(context.expectedMonth)}.`,
-    })
-  }
-
-  if (mismatches.length > 0) {
-    return err<ContextMismatch[]>(mismatches)
-  }
-
+  // Canonical payload intentionally excludes identity/period metadata.
   return ok<true>(true)
 }

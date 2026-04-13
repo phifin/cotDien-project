@@ -11,14 +11,10 @@ export interface FilterState {
   /** Filter to specific partners (e.g., ['VNPT', 'FPT']) */
   partnerCodes?: string[]
   
-  /** strict true/false for debt existence toggle */
   hasDebt?: boolean
   
   /** filter debt by floor/ceiling amounts */
   debtRange?: { min?: number; max?: number }
-  
-  /** contract status based on `validUntil` date */
-  contractStatus?: 'ACTIVE' | 'EXPIRED'
   
   /** substring match on partner codes or contract numbers */
   searchQuery?: string
@@ -30,8 +26,6 @@ export function sanitizeFilterState(input: FilterState): FilterState {
   if (input.pcCodes && input.pcCodes.length > 0) next.pcCodes = input.pcCodes
   if (input.partnerCodes && input.partnerCodes.length > 0) next.partnerCodes = input.partnerCodes
   if (input.hasDebt !== undefined) next.hasDebt = input.hasDebt
-  if (input.contractStatus) next.contractStatus = input.contractStatus
-
   const min = input.debtRange?.min
   const max = input.debtRange?.max
   if (min !== undefined || max !== undefined) {
@@ -70,44 +64,44 @@ export function applyFilters(
   // Defensive early exit
   if (Object.keys(cleanedFilters).length === 0) return dataset
 
-  const { pcCodes, partnerCodes, hasDebt, debtRange, contractStatus, searchQuery } = cleanedFilters
-  const todayRaw = new Date().toISOString().split('T')[0] ?? '' // 'YYYY-MM-DD' comparison for safe HTML dates
+  const { pcCodes, partnerCodes, hasDebt, debtRange, searchQuery } = cleanedFilters
 
   const filteredEntries = dataset.entries.filter(entry => {
     const d = entry.data
     
     // 1. PC Match
-    if (pcCodes && pcCodes.length > 0 && !pcCodes.includes(d.identity.pcCode)) return false
+    if (pcCodes && pcCodes.length > 0 && !pcCodes.includes(entry.meta.pcCode)) return false
     
     // 2. Partner Code Multi-Select Match
-    if (partnerCodes && partnerCodes.length > 0 && !partnerCodes.includes(d.general.partnerCode)) return false
+    if (partnerCodes && partnerCodes.length > 0 && !partnerCodes.includes(d.general.doi_tac)) return false
 
     // 3. Debt Presence
     if (hasDebt !== undefined) {
-      const hasStrictDebt = d.debtAnalysis.totalDebt > 0
+      const hasStrictDebt = d.debt_analysis.duoi_6_thang > 0
+        || d.debt_analysis.tu_6_den_duoi_12_thang > 0
+        || d.debt_analysis.tu_12_den_duoi_24_thang > 0
+        || d.debt_analysis.tu_24_den_duoi_36_thang > 0
+        || d.debt_analysis.tren_36_thang > 0
       if (hasDebt !== hasStrictDebt) return false
     }
 
     // 4. Debt Range
     if (debtRange) {
-      if (debtRange.min !== undefined && d.debtAnalysis.totalDebt < debtRange.min) return false
-      if (debtRange.max !== undefined && d.debtAnalysis.totalDebt > debtRange.max) return false
+      const totalDebt = d.debt_analysis.duoi_6_thang
+        + d.debt_analysis.tu_6_den_duoi_12_thang
+        + d.debt_analysis.tu_12_den_duoi_24_thang
+        + d.debt_analysis.tu_24_den_duoi_36_thang
+        + d.debt_analysis.tren_36_thang
+      if (debtRange.min !== undefined && totalDebt < debtRange.min) return false
+      if (debtRange.max !== undefined && totalDebt > debtRange.max) return false
     }
 
-    // 5. Contract Status
-    if (contractStatus) {
-      const expiry = d.contract.validUntil
-      const isExpired = expiry ? expiry < todayRaw : false
-      if (contractStatus === 'ACTIVE' && isExpired) return false
-      if (contractStatus === 'EXPIRED' && !isExpired) return false
-    }
-
-    // 6. Free text string search
+    // 5. Free text string search
     if (searchQuery) {
       const sq = searchQuery.toLowerCase()
-      const matchPartner = d.general.partnerCode.toLowerCase().includes(sq)
-      const matchContract = d.contract.contractNumber.toLowerCase().includes(sq)
-      const matchPc = d.identity.pcCode.toLowerCase().includes(sq) // Adding PC code as helpful context
+      const matchPartner = d.general.doi_tac.toLowerCase().includes(sq)
+      const matchContract = d.contract.so_hd_phu_luc_hop_dong.toLowerCase().includes(sq)
+      const matchPc = entry.meta.pcCode.toLowerCase().includes(sq)
       if (!matchPartner && !matchContract && !matchPc) return false
     }
 

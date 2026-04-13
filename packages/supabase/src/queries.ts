@@ -3,7 +3,7 @@ import { parseImportedJson, type MonthlyReportPayload, type ParsedSubmissionEntr
 import type { Database } from './types.js'
 
 type SubmissionRow = Database['public']['Tables']['submissions']['Row']
-type LegacyYearMap = Record<string, number>
+type YearMap = Record<string, number>
 
 export interface SubmissionFetchDebug {
   fetchedCount: number
@@ -50,11 +50,11 @@ function toOptionalDate(value: unknown): string | undefined {
   return trimmed.length > 0 ? trimmed : undefined
 }
 
-function toYearMap(value: unknown): LegacyYearMap {
+function toYearMap(value: unknown): YearMap {
   const obj = asRecord(value)
   if (!obj) return {}
 
-  const mapped: LegacyYearMap = {}
+  const mapped: YearMap = {}
   for (const [year, rawAmount] of Object.entries(obj)) {
     if (/^\d{4}$/.test(year)) {
       mapped[year] = toNumber(rawAmount)
@@ -119,82 +119,44 @@ function normalizeLegacyPayload(row: SubmissionRow): MonthlyReportPayload {
   const poleQuantities = asRecord(payload.pole_quantities) ?? {}
   const notes = asRecord(payload.notes) ?? {}
 
-  const generatedByYear = toYearMap(execution.generated_by_year)
-  const collectedByYear = toYearMap(execution.collected_by_year)
-  const openingBalanceByYear = toYearMap(execution.opening_balance_by_year)
-
-  const normalizedExecution = Object.keys({
-    ...generatedByYear,
-    ...collectedByYear,
-  }).reduce<MonthlyReportPayload['execution']>((acc, year) => {
-    acc[year] = {
-      planned: generatedByYear[year] ?? 0,
-      actual: collectedByYear[year] ?? 0,
-      completionPercentage: toNumber(revenueResult.ti_le_thuc_hien),
-    }
-    return acc
-  }, {})
-
-  const debtBuckets = {
-    below6Months: toNumber(debtAnalysis.duoi_6_thang),
-    from6To12Months: toNumber(debtAnalysis.tu_6_den_duoi_12_thang),
-    from12To24Months: toNumber(debtAnalysis.tu_12_den_duoi_24_thang),
-    from24To36Months: toNumber(debtAnalysis.tu_24_den_duoi_36_thang),
-    above36Months: toNumber(debtAnalysis.tren_36_thang),
-  }
-
-  const overdueDebt = Object.values(debtBuckets).reduce((total, item) => total + item, 0)
-  const totalDebt = toNumber(execution.closing_balance)
-
   return {
-    period: {
-      year: getRowPeriodYear(row),
-      month: getRowPeriodMonth(row),
-    },
-    identity: {
-      pcCode: row.pc_code,
-      pcName: typeof general.ten_pc === 'string' ? general.ten_pc : getRowPcName(row),
+    notes: {
+      ghi_chu: typeof notes.ghi_chu === 'string' ? notes.ghi_chu : '',
     },
     general: {
-      partnerCode: typeof general.doi_tac === 'string' && general.doi_tac.length > 0
-        ? (general.doi_tac as MonthlyReportPayload['general']['partnerCode'])
-        : 'KHAC',
-      contactPerson: '',
-      contactPhone: '',
+      ten_pc: typeof general.ten_pc === 'string' ? general.ten_pc : getRowPcName(row),
+      doi_tac: typeof general.doi_tac === 'string' ? general.doi_tac : '',
+      doanh_thu_ke_hoach_nam: toNumber(general.doanh_thu_ke_hoach_nam),
     },
     contract: {
-      contractNumber: typeof contract.so_hd_phu_luc_hop_dong === 'string' ? contract.so_hd_phu_luc_hop_dong : 'N/A',
-      signedDate: toOptionalDate(contract.ngay_ky_hd_plhd),
-      validUntil: toOptionalDate(contract.hieu_luc_den),
+      so_hd_phu_luc_hop_dong: typeof contract.so_hd_phu_luc_hop_dong === 'string' ? contract.so_hd_phu_luc_hop_dong : '',
+      ngay_ky_hd_plhd: toOptionalDate(contract.ngay_ky_hd_plhd) ?? '',
+      hieu_luc_den: toOptionalDate(contract.hieu_luc_den) ?? '',
+      gia_tri_hop_dong_nam: toNumber(contract.gia_tri_hop_dong_nam),
     },
-    execution: normalizedExecution,
-    poleQuantities: {
-      totalPoles: toNumber(poleQuantities.duoi_8_5m)
-        + toNumber(poleQuantities.tu_8_5_den_10_5m)
-        + toNumber(poleQuantities.tu_10_5_den_12_5m)
-        + toNumber(poleQuantities.tren_12_5m),
-      sharedPoles: 0,
-      newlyAdded: 0,
-      heightBuckets: {
-        below8_5m: toNumber(poleQuantities.duoi_8_5m),
-        from8_5mTo10_5m: toNumber(poleQuantities.tu_8_5_den_10_5m),
-        from10_5mTo12_5m: toNumber(poleQuantities.tu_10_5_den_12_5m),
-        above12_5m: toNumber(poleQuantities.tren_12_5m),
-      },
+    execution: {
+      closing_balance: toNumber(execution.closing_balance),
+      generated_by_year: toYearMap(execution.generated_by_year),
+      collected_by_year: toYearMap(execution.collected_by_year),
+      opening_balance_by_year: toYearMap(execution.opening_balance_by_year),
     },
-    revenueResult: {
-      expectedRevenue: toNumber(general.doanh_thu_ke_hoach_nam),
-      actualCollected: toNumber(revenueResult.doanh_thu_thuc_hien_nam),
-      currency: 'VND',
+    debt_analysis: {
+      duoi_6_thang: toNumber(debtAnalysis.duoi_6_thang),
+      tu_6_den_duoi_12_thang: toNumber(debtAnalysis.tu_6_den_duoi_12_thang),
+      tu_12_den_duoi_24_thang: toNumber(debtAnalysis.tu_12_den_duoi_24_thang),
+      tu_24_den_duoi_36_thang: toNumber(debtAnalysis.tu_24_den_duoi_36_thang),
+      tren_36_thang: toNumber(debtAnalysis.tren_36_thang),
     },
-    debtAnalysis: {
-      totalDebt,
-      overdueDebt,
-      debtClassification: undefined,
-      yearlyDebts: openingBalanceByYear,
-      agingBuckets: debtBuckets,
+    revenue_result: {
+      doanh_thu_thuc_hien_nam: toNumber(revenueResult.doanh_thu_thuc_hien_nam),
+      ti_le_thuc_hien: toNumber(revenueResult.ti_le_thuc_hien),
     },
-    notes: typeof notes.ghi_chu === 'string' ? notes.ghi_chu : '',
+    pole_quantities: {
+      duoi_8_5m: toNumber(poleQuantities.duoi_8_5m),
+      tu_8_5_den_10_5m: toNumber(poleQuantities.tu_8_5_den_10_5m),
+      tu_10_5_den_12_5m: toNumber(poleQuantities.tu_10_5_den_12_5m),
+      tren_12_5m: toNumber(poleQuantities.tren_12_5m),
+    },
   }
 }
 
@@ -210,6 +172,10 @@ function mapRowToParsedEntry(row: SubmissionRow): ParsedSubmissionEntry | null {
     meta: {
       id: row.id,
       submittedAt: row.created_at,
+      pcCode: row.pc_code,
+      pcName: getRowPcName(row),
+      reportYear: getRowPeriodYear(row),
+      reportMonth: getRowPeriodMonth(row),
       status: 'SUBMITTED', // Or default if missing in DB schema
     },
     data: validated.data,
@@ -315,13 +281,16 @@ export async function fetchSubmissionsForCompare(
 /**
  * Pushes exactly one Canonical Payload object into the DB flat row mapping.
  */
-export async function insertSubmission(payload: MonthlyReportPayload) {
+export async function insertSubmission(
+  payload: MonthlyReportPayload,
+  metadata: { pcCode: string; pcName: string; reportYear: number; reportMonth: number },
+) {
   const supabase = getSupabaseBrowserClient()
   const insertRow: Database['public']['Tables']['submissions']['Insert'] = {
-    report_year: payload.period.year,
-    report_month: payload.period.month,
-    pc_code: payload.identity.pcCode,
-    pc_name: payload.identity.pcName,
+    report_year: metadata.reportYear,
+    report_month: metadata.reportMonth,
+    pc_code: metadata.pcCode,
+    pc_name: metadata.pcName,
     payload,
   }
 

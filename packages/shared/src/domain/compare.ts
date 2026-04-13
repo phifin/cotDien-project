@@ -40,8 +40,8 @@ function comparePartnerDebtStats(a: PartnerDebtStats, b: PartnerDebtStats) {
     totalRevenue: calcNumericDiff(a.totalRevenue, b.totalRevenue),
     totalDebt: calcNumericDiff(a.totalDebt, b.totalDebt, true),
     agingBuckets: {
-      below6Months: calcNumericDiff(a.agingBuckets.below6Months, b.agingBuckets.below6Months, true),
-      above36Months: calcNumericDiff(a.agingBuckets.above36Months, b.agingBuckets.above36Months, true),
+      duoi_6_thang: calcNumericDiff(a.agingBuckets.duoi_6_thang, b.agingBuckets.duoi_6_thang, true),
+      tren_36_thang: calcNumericDiff(a.agingBuckets.tren_36_thang, b.agingBuckets.tren_36_thang, true),
     },
   }
 }
@@ -60,70 +60,54 @@ export function compareMergedDatasets(
 
   return {
     revenue: {
-      totalExpected: calcNumericDiff(statsA.revenue.totalExpected, statsB.revenue.totalExpected),
-      totalActualCollected: calcNumericDiff(
-        statsA.revenue.totalActualCollected,
-        statsB.revenue.totalActualCollected,
+      totalPlanned: calcNumericDiff(statsA.revenue.totalPlanned, statsB.revenue.totalPlanned),
+      totalActual: calcNumericDiff(
+        statsA.revenue.totalActual,
+        statsB.revenue.totalActual,
       ),
-      executionRate: calcNumericDiff(statsA.revenue.executionRate, statsB.revenue.executionRate),
-      collectionRate: calcNumericDiff(statsA.revenue.collectionRate, statsB.revenue.collectionRate),
+      completionRate: calcNumericDiff(statsA.revenue.completionRate, statsB.revenue.completionRate),
       byMajorPartner: {
-        FPT: calcNumericDiff(statsA.revenue.byMajorPartner.FPT, statsB.revenue.byMajorPartner.FPT),
-        VNPT: calcNumericDiff(
-          statsA.revenue.byMajorPartner.VNPT,
-          statsB.revenue.byMajorPartner.VNPT,
-        ),
-        MOBI: calcNumericDiff(
-          statsA.revenue.byMajorPartner.MOBI,
-          statsB.revenue.byMajorPartner.MOBI,
-        ),
-        VTVCAB: calcNumericDiff(
-          statsA.revenue.byMajorPartner.VTVCAB,
-          statsB.revenue.byMajorPartner.VTVCAB,
-        ),
-        SCTV: calcNumericDiff(
-          statsA.revenue.byMajorPartner.SCTV,
-          statsB.revenue.byMajorPartner.SCTV,
-        ),
+        FPT: calcNumericDiff(statsA.revenue.byMajorPartner.FPT ?? 0, statsB.revenue.byMajorPartner.FPT ?? 0),
+        VNPT: calcNumericDiff(statsA.revenue.byMajorPartner.VNPT ?? 0, statsB.revenue.byMajorPartner.VNPT ?? 0),
+        MOBI: calcNumericDiff(statsA.revenue.byMajorPartner.MOBI ?? 0, statsB.revenue.byMajorPartner.MOBI ?? 0),
+        VTVCAB: calcNumericDiff(statsA.revenue.byMajorPartner.VTVCAB ?? 0, statsB.revenue.byMajorPartner.VTVCAB ?? 0),
+        SCTV: calcNumericDiff(statsA.revenue.byMajorPartner.SCTV ?? 0, statsB.revenue.byMajorPartner.SCTV ?? 0),
       },
     },
     poles: {
       total: calcNumericDiff(statsA.poles.total, statsB.poles.total),
       buckets: {
-        below8_5m: calcNumericDiff(statsA.poles.buckets.below8_5m, statsB.poles.buckets.below8_5m),
-        above12_5m: calcNumericDiff(
-          statsA.poles.buckets.above12_5m,
-          statsB.poles.buckets.above12_5m,
-        ), // Showing extremes
+        duoi_8_5m: calcNumericDiff(statsA.poles.buckets.duoi_8_5m, statsB.poles.buckets.duoi_8_5m),
+        tren_12_5m: calcNumericDiff(statsA.poles.buckets.tren_12_5m, statsB.poles.buckets.tren_12_5m),
       },
     },
     debt: {
       // Invert trend flag: Increase in debt is a BAD trend (isPositiveTrend = false)
       total: calcNumericDiff(statsA.debt.total, statsB.debt.total, true),
       agingBuckets: {
-        below6Months: calcNumericDiff(
-          statsA.debt.agingBuckets.below6Months,
-          statsB.debt.agingBuckets.below6Months,
+        duoi_6_thang: calcNumericDiff(
+          statsA.debt.agingBuckets.duoi_6_thang,
+          statsB.debt.agingBuckets.duoi_6_thang,
           true,
         ),
-        from6To12Months: calcNumericDiff(
-          statsA.debt.agingBuckets.from6To12Months,
-          statsB.debt.agingBuckets.from6To12Months,
+        tu_6_den_duoi_12_thang: calcNumericDiff(
+          statsA.debt.agingBuckets.tu_6_den_duoi_12_thang,
+          statsB.debt.agingBuckets.tu_6_den_duoi_12_thang,
           true,
         ),
-        from12To24Months: calcNumericDiff(
-          statsA.debt.agingBuckets.from12To24Months,
-          statsB.debt.agingBuckets.from12To24Months,
+        tu_12_den_duoi_24_thang: calcNumericDiff(
+          statsA.debt.agingBuckets.tu_12_den_duoi_24_thang,
+          statsB.debt.agingBuckets.tu_12_den_duoi_24_thang,
           true,
         ),
-        from24To36Months: calcNumericDiff(
-          statsA.debt.agingBuckets.from24To36Months,
-          statsB.debt.agingBuckets.from24To36Months,
+        tu_24_den_duoi_36_thang: calcNumericDiff(
+          statsA.debt.agingBuckets.tu_24_den_duoi_36_thang,
+          statsB.debt.agingBuckets.tu_24_den_duoi_36_thang,
           true,
         ),
-        above36Months: calcNumericDiff(
-          statsA.debt.agingBuckets.above36Months,
-          statsB.debt.agingBuckets.above36Months,
+        tren_36_thang: calcNumericDiff(
+          statsA.debt.agingBuckets.tren_36_thang,
+          statsB.debt.agingBuckets.tren_36_thang,
           true,
         ),
       },

@@ -4,48 +4,42 @@ export interface PartnerDebtStats {
   partnerCode: string
   totalRevenue: number
   totalDebt: number
-  yearlyDebts: Record<string, number>
   agingBuckets: {
-    below6Months: number
-    from6To12Months: number
-    from12To24Months: number
-    from24To36Months: number
-    above36Months: number
+    duoi_6_thang: number
+    tu_6_den_duoi_12_thang: number
+    tu_12_den_duoi_24_thang: number
+    tu_24_den_duoi_36_thang: number
+    tren_36_thang: number
   }
 }
 
 export interface DashboardStats {
   revenue: {
-    totalExpected: number
-    totalActualCollected: number
-    totalPlannedExecution: number
-    totalActualExecution: number
+    totalPlanned: number
+    totalActual: number
+    totalContractValue: number
     /** Revenue grouped by requested major partners */
-    byMajorPartner: Record<'FPT' | 'VNPT' | 'MOBI' | 'VTVCAB' | 'SCTV', number>
+    byMajorPartner: Record<string, number>
     /** calculated via actualRevenue / plannedRevenue safely */
-    executionRate: number
-    /** calculated via collectedInPeriod / generatedInPeriod safely */
-    collectionRate: number
+    completionRate: number
   }
   poles: {
     total: number
     buckets: {
-      below8_5m: number
-      from8_5mTo10_5m: number
-      from10_5mTo12_5m: number
-      above12_5m: number
+      duoi_8_5m: number
+      tu_8_5_den_10_5m: number
+      tu_10_5_den_12_5m: number
+      tren_12_5m: number
     }
   }
   debt: {
     total: number
-    /** Dynamically merged years matching raw payload structures e.g. "2023", "2024" */
-    yearlyDebts: Record<string, number>
     agingBuckets: {
-      below6Months: number
-      from6To12Months: number
-      from12To24Months: number
-      from24To36Months: number
-      above36Months: number
+      duoi_6_thang: number
+      tu_6_den_duoi_12_thang: number
+      tu_12_den_duoi_24_thang: number
+      tu_24_den_duoi_36_thang: number
+      tren_36_thang: number
     }
   }
   difficultPartners: {
@@ -70,13 +64,12 @@ function createEmptyDebtStats(partnerCode: string): PartnerDebtStats {
     partnerCode,
     totalRevenue: 0,
     totalDebt: 0,
-    yearlyDebts: {},
     agingBuckets: {
-      below6Months: 0,
-      from6To12Months: 0,
-      from12To24Months: 0,
-      from24To36Months: 0,
-      above36Months: 0,
+      duoi_6_thang: 0,
+      tu_6_den_duoi_12_thang: 0,
+      tu_12_den_duoi_24_thang: 0,
+      tu_24_den_duoi_36_thang: 0,
+      tren_36_thang: 0,
     },
   }
 }
@@ -85,11 +78,11 @@ type AgingBuckets = PartnerDebtStats['agingBuckets']
 
 function mergeAgingBuckets(target: AgingBuckets, source?: Partial<AgingBuckets>) {
   if (!source) return
-  target.below6Months += source.below6Months ?? 0
-  target.from6To12Months += source.from6To12Months ?? 0
-  target.from12To24Months += source.from12To24Months ?? 0
-  target.from24To36Months += source.from24To36Months ?? 0
-  target.above36Months += source.above36Months ?? 0
+  target.duoi_6_thang += source.duoi_6_thang ?? 0
+  target.tu_6_den_duoi_12_thang += source.tu_6_den_duoi_12_thang ?? 0
+  target.tu_12_den_duoi_24_thang += source.tu_12_den_duoi_24_thang ?? 0
+  target.tu_24_den_duoi_36_thang += source.tu_24_den_duoi_36_thang ?? 0
+  target.tren_36_thang += source.tren_36_thang ?? 0
 }
 
 /**
@@ -103,27 +96,24 @@ function mergeAgingBuckets(target: AgingBuckets, source?: Partial<AgingBuckets>)
 export function buildStatsModel(dataset: MergedMonthlyDataset): DashboardStats {
   const stats: DashboardStats = {
     revenue: {
-      totalExpected: 0,
-      totalActualCollected: 0,
-      totalPlannedExecution: 0,
-      totalActualExecution: 0,
-      byMajorPartner: { FPT: 0, VNPT: 0, MOBI: 0, VTVCAB: 0, SCTV: 0 },
-      executionRate: 0,
-      collectionRate: 0,
+      totalPlanned: 0,
+      totalActual: 0,
+      totalContractValue: 0,
+      byMajorPartner: {},
+      completionRate: 0,
     },
     poles: {
       total: 0,
-      buckets: { below8_5m: 0, from8_5mTo10_5m: 0, from10_5mTo12_5m: 0, above12_5m: 0 },
+      buckets: { duoi_8_5m: 0, tu_8_5_den_10_5m: 0, tu_10_5_den_12_5m: 0, tren_12_5m: 0 },
     },
     debt: {
       total: 0,
-      yearlyDebts: {},
       agingBuckets: {
-        below6Months: 0,
-        from6To12Months: 0,
-        from12To24Months: 0,
-        from24To36Months: 0,
-        above36Months: 0,
+        duoi_6_thang: 0,
+        tu_6_den_duoi_12_thang: 0,
+        tu_12_den_duoi_24_thang: 0,
+        tu_24_den_duoi_36_thang: 0,
+        tren_36_thang: 0,
       },
     },
     difficultPartners: {
@@ -134,73 +124,39 @@ export function buildStatsModel(dataset: MergedMonthlyDataset): DashboardStats {
 
   for (const entry of dataset.entries) {
     const d = entry.data
-    const partner = d.general.partnerCode
+    const partner = d.general.doi_tac
 
-    // 1. Revenue
-    stats.revenue.totalExpected += d.revenueResult.expectedRevenue
-    stats.revenue.totalActualCollected += d.revenueResult.actualCollected
+    stats.revenue.totalPlanned += d.general.doanh_thu_ke_hoach_nam
+    stats.revenue.totalActual += d.revenue_result.doanh_thu_thuc_hien_nam
+    stats.revenue.totalContractValue += d.contract.gia_tri_hop_dong_nam
+    stats.revenue.byMajorPartner[partner] = (stats.revenue.byMajorPartner[partner] ?? 0) + d.general.doanh_thu_ke_hoach_nam
 
-    if (partner in stats.revenue.byMajorPartner) {
-      stats.revenue.byMajorPartner[partner as keyof typeof stats.revenue.byMajorPartner] +=
-        d.revenueResult.expectedRevenue
-    }
+    stats.poles.buckets.duoi_8_5m += d.pole_quantities.duoi_8_5m
+    stats.poles.buckets.tu_8_5_den_10_5m += d.pole_quantities.tu_8_5_den_10_5m
+    stats.poles.buckets.tu_10_5_den_12_5m += d.pole_quantities.tu_10_5_den_12_5m
+    stats.poles.buckets.tren_12_5m += d.pole_quantities.tren_12_5m
+    stats.poles.total += d.pole_quantities.duoi_8_5m
+      + d.pole_quantities.tu_8_5_den_10_5m
+      + d.pole_quantities.tu_10_5_den_12_5m
+      + d.pole_quantities.tren_12_5m
 
-    let localPlannedExec = 0
-    let localActualExec = 0
-    for (const exec of Object.values(d.execution)) {
-      localPlannedExec += exec.planned
-      localActualExec += exec.actual
-    }
-    stats.revenue.totalPlannedExecution += localPlannedExec
-    stats.revenue.totalActualExecution += localActualExec
+    const debtAging = d.debt_analysis.duoi_6_thang
+      + d.debt_analysis.tu_6_den_duoi_12_thang
+      + d.debt_analysis.tu_12_den_duoi_24_thang
+      + d.debt_analysis.tu_24_den_duoi_36_thang
+      + d.debt_analysis.tren_36_thang
+    stats.debt.total += debtAging
+    mergeAgingBuckets(stats.debt.agingBuckets, d.debt_analysis)
 
-    // 2. Poles
-    stats.poles.total += d.poleQuantities.totalPoles
-    if (d.poleQuantities.heightBuckets) {
-      const hb = d.poleQuantities.heightBuckets
-      stats.poles.buckets.below8_5m += hb.below8_5m
-      stats.poles.buckets.from8_5mTo10_5m += hb.from8_5mTo10_5m
-      stats.poles.buckets.from10_5mTo12_5m += hb.from10_5mTo12_5m
-      stats.poles.buckets.above12_5m += hb.above12_5m
-    }
-
-    // 3. Overall Debt
-    stats.debt.total += d.debtAnalysis.totalDebt
-    mergeAgingBuckets(stats.debt.agingBuckets, d.debtAnalysis.agingBuckets)
-
-    if (d.debtAnalysis.yearlyDebts) {
-      for (const [year, amount] of Object.entries(d.debtAnalysis.yearlyDebts)) {
-        if (!stats.debt.yearlyDebts[year]) stats.debt.yearlyDebts[year] = 0
-        stats.debt.yearlyDebts[year] += amount
-      }
-    }
-
-    // 4. Difficult Partners Tracking
     if (partner === 'VTVCAB' || partner === 'SCTV') {
       const pStats = stats.difficultPartners[partner]
-      pStats.totalRevenue += d.revenueResult.expectedRevenue
-      pStats.totalDebt += d.debtAnalysis.totalDebt
-      
-      mergeAgingBuckets(pStats.agingBuckets, d.debtAnalysis.agingBuckets)
-
-      if (d.debtAnalysis.yearlyDebts) {
-        for (const [year, amount] of Object.entries(d.debtAnalysis.yearlyDebts)) {
-          if (!pStats.yearlyDebts[year]) pStats.yearlyDebts[year] = 0
-          pStats.yearlyDebts[year] += amount
-        }
-      }
+      pStats.totalRevenue += d.general.doanh_thu_ke_hoach_nam
+      pStats.totalDebt += debtAging
+      mergeAgingBuckets(pStats.agingBuckets, d.debt_analysis)
     }
   }
 
-  // Calculate final macro rates
-  stats.revenue.executionRate = safeRate(
-    stats.revenue.totalActualExecution,
-    stats.revenue.totalPlannedExecution,
-  )
-  stats.revenue.collectionRate = safeRate(
-    stats.revenue.totalActualCollected,
-    stats.revenue.totalActualExecution,
-  )
+  stats.revenue.completionRate = safeRate(stats.revenue.totalActual, stats.revenue.totalPlanned)
 
   return stats
 }

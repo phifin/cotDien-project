@@ -92,7 +92,7 @@ export function DashboardTable({ dataset }: { dataset: MergedMonthlyDataset }) {
         <div>Hiển thị <span className="font-medium text-slate-900">{tableModel.rows.length}</span> dòng</div>
         <div>
           Tổng doanh thu tháng: <span className="font-medium font-mono text-slate-900 ml-1">
-            {dataset.summary.totalExpectedRevenue.toLocaleString()} VND
+            {dataset.summary.totalRevenuePlan.toLocaleString()} VND
           </span>
         </div>
       </div>

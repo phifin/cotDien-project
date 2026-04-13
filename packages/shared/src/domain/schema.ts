@@ -1,111 +1,69 @@
 import { z } from 'zod'
-import { PARTNER_CODES } from './constants.js'
-
-// ─── Metadata Schemas ────────────────────────────────────────────────────────
-
-/**
- * Report Period Metadata
- * Canonical representation of the month/year this report belongs to.
- */
 export const ReportPeriodSchema = z.object({
   month: z.number().int().min(1).max(12),
   year: z.number().int().min(2000).max(2100),
 })
 
-/**
- * PC Identity Metadata
- * pcCode: Unique identifier for the Power Company
- * pcName: Display name, NOT editable by end users. Always server/context derived.
- */
 export const PcIdentitySchema = z.object({
   pcCode: z.string().min(1, 'PC Code is required'),
-  pcName: z.string().readonly().describe('Read-only: Derived from auth context'),
+  pcName: z.string().min(1, 'PC Name is required'),
 })
 
-// ─── Logical Blocks ─────────────────────────────────────────────────────────
+const YearNumberMapSchema = z.record(
+  z.string().regex(/^\d{4}$/, 'Key must be a 4-digit year'),
+  z.number(),
+)
+
+export const NotesSchema = z.object({
+  ghi_chu: z.string(),
+})
 
 export const GeneralInfoSchema = z.object({
-  partnerCode: z.enum(PARTNER_CODES, {
-    errorMap: () => ({ message: 'Invalid partner code selected' }),
-  }),
-  contactPerson: z.string().optional(),
-  contactPhone: z.string().optional(),
+  ten_pc: z.string(),
+  doi_tac: z.string(),
+  doanh_thu_ke_hoach_nam: z.number(),
 })
 
 export const ContractSchema = z.object({
-  contractNumber: z.string().min(1, 'Contract number is required'),
-  signedDate: z.string().date().optional(), // YYYY-MM-DD
-  validUntil: z.string().date().optional(),
+  so_hd_phu_luc_hop_dong: z.string(),
+  ngay_ky_hd_plhd: z.string(),
+  hieu_luc_den: z.string(),
+  gia_tri_hop_dong_nam: z.number(),
 })
 
-/**
- * Execution metrics that can vary per year.
- * By using z.record(z.string(), ...), we avoid hardcoding "2024", "2025".
- * Keys should be parseable as strings matching 'YYYY'.
- */
-export const YearlyExecutionSchema = z.object({
-  planned: z.number().nonnegative(),
-  actual: z.number().nonnegative(),
-  completionPercentage: z.number().min(0).max(100).optional(),
-})
-
-export const ExecutionSchema = z.record(
-  z.string().regex(/^\d{4}$/, 'Key must be a 4-digit year'),
-  YearlyExecutionSchema,
-).describe('Year-keyed map of execution data to support dynamic multi-year structures.')
-
-export const PoleQuantitiesSchema = z.object({
-  totalPoles: z.number().int().nonnegative(),
-  sharedPoles: z.number().int().nonnegative().optional(),
-  newlyAdded: z.number().int().nonnegative().optional(),
-  heightBuckets: z.object({
-    below8_5m: z.number().int().nonnegative().default(0),
-    from8_5mTo10_5m: z.number().int().nonnegative().default(0),
-    from10_5mTo12_5m: z.number().int().nonnegative().default(0),
-    above12_5m: z.number().int().nonnegative().default(0),
-  }).optional(),
-})
-
-export const RevenueResultSchema = z.object({
-  expectedRevenue: z.number().nonnegative(),
-  actualCollected: z.number().nonnegative(),
-  currency: z.string().default('VND'),
-})
-
-export const DebtAgingBucketsSchema = z.object({
-  below6Months: z.number().nonnegative().default(0),
-  from6To12Months: z.number().nonnegative().default(0),
-  from12To24Months: z.number().nonnegative().default(0),
-  from24To36Months: z.number().nonnegative().default(0),
-  above36Months: z.number().nonnegative().default(0),
+export const ExecutionSchema = z.object({
+  closing_balance: z.number(),
+  generated_by_year: YearNumberMapSchema,
+  collected_by_year: YearNumberMapSchema,
+  opening_balance_by_year: YearNumberMapSchema,
 })
 
 export const DebtAnalysisSchema = z.object({
-  totalDebt: z.number().nonnegative(),
-  overdueDebt: z.number().nonnegative(),
-  debtClassification: z.enum(['SAFE', 'WARNING', 'CRITICAL']).optional(),
-  yearlyDebts: z.record(
-    z.string().regex(/^\d{4}$/, 'Key must be a 4-digit year'),
-    z.number().nonnegative()
-  ).optional(),
-  agingBuckets: DebtAgingBucketsSchema.optional()
+  duoi_6_thang: z.number(),
+  tu_6_den_duoi_12_thang: z.number(),
+  tu_12_den_duoi_24_thang: z.number(),
+  tu_24_den_duoi_36_thang: z.number(),
+  tren_36_thang: z.number(),
 })
 
-// ─── Canonical Payload ────────────────────────────────────────────────────────
+export const RevenueResultSchema = z.object({
+  doanh_thu_thuc_hien_nam: z.number(),
+  ti_le_thuc_hien: z.number(),
+})
 
-/**
- * The Canonical Submission Payload.
- * This represents the single source of truth for a monthly PC report submission.
- * It is flat enough for document databases but logically grouped for UI and extraction.
- */
+export const PoleQuantitiesSchema = z.object({
+  duoi_8_5m: z.number(),
+  tu_8_5_den_10_5m: z.number(),
+  tu_10_5_den_12_5m: z.number(),
+  tren_12_5m: z.number(),
+})
+
 export const MonthlyReportPayloadSchema = z.object({
-  period: ReportPeriodSchema,
-  identity: PcIdentitySchema,
+  notes: NotesSchema,
   general: GeneralInfoSchema,
   contract: ContractSchema,
   execution: ExecutionSchema,
-  poleQuantities: PoleQuantitiesSchema,
-  revenueResult: RevenueResultSchema,
-  debtAnalysis: DebtAnalysisSchema,
-  notes: z.string().optional().describe('Free-text notes from the PC.'),
+  debt_analysis: DebtAnalysisSchema,
+  revenue_result: RevenueResultSchema,
+  pole_quantities: PoleQuantitiesSchema,
 })

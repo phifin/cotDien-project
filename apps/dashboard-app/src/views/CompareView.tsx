@@ -50,10 +50,9 @@ export function CompareView({ onBack }: { onBack: () => void }) {
     const d = data.diff
     return {
       revenue: [
-        { metric: 'Tổng doanh thu kế hoạch', diff: d.revenue.totalExpected, invert: false },
-        { metric: 'Tổng thực thu', diff: d.revenue.totalActualCollected, invert: false },
-        { metric: 'Tỷ lệ thực hiện', diff: d.revenue.executionRate, invert: false, isRate: true },
-        { metric: 'Tỷ lệ thu hồi', diff: d.revenue.collectionRate, invert: false, isRate: true },
+        { metric: 'Tổng doanh thu kế hoạch', diff: d.revenue.totalPlanned, invert: false },
+        { metric: 'Tổng thực hiện', diff: d.revenue.totalActual, invert: false },
+        { metric: 'Tỷ lệ thực hiện', diff: d.revenue.completionRate, invert: false, isRate: true },
       ],
       partners: [
         { metric: 'FPT', diff: d.revenue.byMajorPartner.FPT, invert: false },
@@ -64,26 +63,26 @@ export function CompareView({ onBack }: { onBack: () => void }) {
       ],
       poles: [
         { metric: 'Tổng số lượng cột', diff: d.poles.total, invert: false },
-        { metric: 'Cột dưới 8.5m', diff: d.poles.buckets.below8_5m, invert: false },
-        { metric: 'Cột trên 12.5m', diff: d.poles.buckets.above12_5m, invert: false },
+        { metric: 'Cột dưới 8.5m', diff: d.poles.buckets.duoi_8_5m, invert: false },
+        { metric: 'Cột trên 12.5m', diff: d.poles.buckets.tren_12_5m, invert: false },
       ],
       debt: [
         { metric: 'Tổng công nợ', diff: d.debt.total, invert: true },
-        { metric: 'Nợ dưới 6 tháng', diff: d.debt.agingBuckets.below6Months, invert: true },
-        { metric: 'Nợ 6-12 tháng', diff: d.debt.agingBuckets.from6To12Months, invert: true },
-        { metric: 'Nợ 12-24 tháng', diff: d.debt.agingBuckets.from12To24Months, invert: true },
-        { metric: 'Nợ 24-36 tháng', diff: d.debt.agingBuckets.from24To36Months, invert: true },
-        { metric: 'Nợ trên 36 tháng', diff: d.debt.agingBuckets.above36Months, invert: true },
+        { metric: 'Nợ dưới 6 tháng', diff: d.debt.agingBuckets.duoi_6_thang, invert: true },
+        { metric: 'Nợ 6-12 tháng', diff: d.debt.agingBuckets.tu_6_den_duoi_12_thang, invert: true },
+        { metric: 'Nợ 12-24 tháng', diff: d.debt.agingBuckets.tu_12_den_duoi_24_thang, invert: true },
+        { metric: 'Nợ 24-36 tháng', diff: d.debt.agingBuckets.tu_24_den_duoi_36_thang, invert: true },
+        { metric: 'Nợ trên 36 tháng', diff: d.debt.agingBuckets.tren_36_thang, invert: true },
       ],
       difficultPartners: [
         { metric: 'VTVCAB - Tổng doanh thu', diff: d.difficultPartners.VTVCAB.totalRevenue, invert: false },
         { metric: 'VTVCAB - Tổng nợ', diff: d.difficultPartners.VTVCAB.totalDebt, invert: true },
-        { metric: 'VTVCAB - Nợ dưới 6 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.below6Months, invert: true },
-        { metric: 'VTVCAB - Nợ trên 36 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.above36Months, invert: true },
+        { metric: 'VTVCAB - Nợ dưới 6 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.duoi_6_thang, invert: true },
+        { metric: 'VTVCAB - Nợ trên 36 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.tren_36_thang, invert: true },
         { metric: 'SCTV - Tổng doanh thu', diff: d.difficultPartners.SCTV.totalRevenue, invert: false },
         { metric: 'SCTV - Tổng nợ', diff: d.difficultPartners.SCTV.totalDebt, invert: true },
-        { metric: 'SCTV - Nợ dưới 6 tháng', diff: d.difficultPartners.SCTV.agingBuckets.below6Months, invert: true },
-        { metric: 'SCTV - Nợ trên 36 tháng', diff: d.difficultPartners.SCTV.agingBuckets.above36Months, invert: true },
+        { metric: 'SCTV - Nợ dưới 6 tháng', diff: d.difficultPartners.SCTV.agingBuckets.duoi_6_thang, invert: true },
+        { metric: 'SCTV - Nợ trên 36 tháng', diff: d.difficultPartners.SCTV.agingBuckets.tren_36_thang, invert: true },
       ],
     }
   }, [data])
@@ -181,7 +180,7 @@ export function CompareView({ onBack }: { onBack: () => void }) {
                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
                  <p className="text-sm font-medium text-slate-500">Biến Động Doanh Thu Gộp</p>
                  <div className="mt-2 text-2xl font-bold text-slate-800">
-                   <DeltaBadge val={diffSummary.revenue.totalExpected.delta} />
+                   <DeltaBadge val={diffSummary.revenue.totalPlanned.delta} />
                  </div>
                </div>
                <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">

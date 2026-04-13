@@ -112,7 +112,7 @@ function toCsv(records: Array<Record<string, string | number | null>>): string {
 function FormApp() {
   const access = useAccess()
   const { hasRestored, pendingRows, savedAt, saveDraft, clearDraft, restoreDraftRows, discardPendingRestore } = useDraftStorage(access)
-  const targetYears = useMemo(() => [access.period.year - 1, access.period.year], [access.period.year])
+  const targetYears = useMemo(() => [access.period.year], [access.period.year])
   
   // Local active view mimicking the spreadsheet rows initially seeded from drafts
   const [rows, setRows] = useState<Array<Record<string, string>>>([])
@@ -123,18 +123,26 @@ function FormApp() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const applyContextDerivedValues = useCallback(
+    (inputRows: Array<Record<string, string>>) => inputRows.map((row) => ({
+      ...row,
+      'general.ten_pc': access.pcName,
+    })),
+    [access.pcName],
+  )
+
   useEffect(() => {
     if (!hasRestored || !pendingRows || pendingRows.length === 0) return
 
     const readableTime = savedAt ? new Date(savedAt).toLocaleString() : 'unknown time'
     const shouldRestore = window.confirm(`Phát hiện bản nháp cho kỳ hiện tại (${readableTime}). Khôi phục?`)
     if (shouldRestore) {
-      setRows(restoreDraftRows())
+      setRows(applyContextDerivedValues(restoreDraftRows()))
       return
     }
 
     discardPendingRestore()
-  }, [hasRestored, pendingRows, savedAt, restoreDraftRows, discardPendingRestore])
+  }, [hasRestored, pendingRows, savedAt, restoreDraftRows, discardPendingRestore, applyContextDerivedValues])
 
   useEffect(() => {
     if (!hasRestored) return
@@ -143,9 +151,9 @@ function FormApp() {
 
   // Sync back to local storage whenever rows mutate meaningfully (debouncing not strictly required for primitive nested arrays inside O(100) boundaries according to Vercel rules)
   const handleRowsChange = useCallback((newRows: Array<Record<string, string>>) => {
-    setRows(newRows)
+    setRows(applyContextDerivedValues(newRows))
     setSuccessMsg(null)
-  }, [])
+  }, [applyContextDerivedValues])
 
   // Action: Tải CSV
   const handleExportCsv = () => {
@@ -199,7 +207,12 @@ function FormApp() {
 
     try {
        const payloads = canonicalizeRows(rows, access)
-       const promises = payloads.map((payload) => insertSubmission(payload))
+       const promises = payloads.map((payload) => insertSubmission(payload, {
+         pcCode: access.pcCode,
+         pcName: access.pcName,
+         reportYear: access.period.year,
+         reportMonth: access.period.month,
+       }))
 
        await Promise.all(promises)
 
@@ -271,7 +284,7 @@ function FormApp() {
            importedRows.push(canonicalToFlatRow(hydrated, targetYears))
          }
 
-         setRows(importedRows)
+         setRows(applyContextDerivedValues(importedRows))
          alert(`Đã import ${String(importedRows.length)} dòng dữ liệu canonical.`)
       } catch {
          alert('File JSON không hợp lệ.')

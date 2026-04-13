@@ -39,8 +39,8 @@ export default function App() {
 
   const filterOptions = useMemo(() => {
     const entries = pipelineData?.merged.entries ?? []
-    const pcOptions = Array.from(new Set(entries.map((entry) => entry.data.identity.pcCode))).sort()
-    const partnerOptions = Array.from(new Set(entries.map((entry) => entry.data.general.partnerCode))).sort()
+    const pcOptions = Array.from(new Set(entries.map((entry) => entry.meta.pcCode))).sort()
+    const partnerOptions = Array.from(new Set(entries.map((entry) => entry.data.general.doi_tac))).sort()
     return { pcOptions, partnerOptions }
   }, [pipelineData])
 

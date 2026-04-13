@@ -10,11 +10,6 @@ interface FilterModalProps {
   onClose: () => void
 }
 
-function toContractStatus(value: string): FilterState['contractStatus'] | undefined {
-  if (value === 'ACTIVE' || value === 'EXPIRED') return value
-  return undefined
-}
-
 export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, onClose }: FilterModalProps) {
   const [f, setF] = useState<FilterState>(sanitizeFilterState(initialState))
 
@@ -86,22 +81,7 @@ export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, 
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* Status */}
-             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-slate-700">Trạng thái HĐ</h3>
-              <select 
-                value={f.contractStatus || ""}
-                onChange={(e) => { setF({...f, contractStatus: toContractStatus(e.target.value)}); }}
-                className="w-full h-9 rounded border border-slate-300 text-sm px-3 bg-white"
-              >
-                <option value="">Tất cả</option>
-                <option value="ACTIVE">Đang hiệu lực</option>
-                <option value="EXPIRED">Đã hết hạn</option>
-              </select>
-            </div>
-
-            {/* Debt switch */}
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-slate-700">Tình trạng Nợ</h3>
               <select 

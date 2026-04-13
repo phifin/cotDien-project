@@ -33,21 +33,12 @@ function toPrimitiveCell(value: unknown, fallback: PrimitiveCellValue = ''): Pri
 }
 
 function buildYearAliases(entry: ParsedSubmissionEntry): Record<string, PrimitiveCellValue> {
-  const data = entry.data as unknown as Record<string, unknown>
-  const execution = (data.execution ?? {}) as Record<string, unknown>
-
-  const openingBalanceByYear = ((execution.opening_balance_by_year as Record<string, unknown> | undefined) ?? {})
-  const generatedByYear = ((execution.generated_by_year as Record<string, unknown> | undefined) ?? {})
-  const collectedByYear = ((execution.collected_by_year as Record<string, unknown> | undefined) ?? {})
-
-  // Supports both old snake_case payloads and normalized canonical execution.<year>.planned/actual.
-  const executionMap = entry.data.execution
-
+  const execution = entry.data.execution
   return {
-    ke_hoach_2024: toPrimitiveCell(openingBalanceByYear['2024'] ?? entry.data.debtAnalysis.yearlyDebts?.['2024'] ?? 0, 0),
-    ke_hoach_2025: toPrimitiveCell(openingBalanceByYear['2025'] ?? entry.data.debtAnalysis.yearlyDebts?.['2025'] ?? 0, 0),
-    doanh_so_2026: toPrimitiveCell(generatedByYear['2026'] ?? executionMap['2026']?.planned ?? 0, 0),
-    da_thu_2026: toPrimitiveCell(collectedByYear['2026'] ?? executionMap['2026']?.actual ?? 0, 0),
+    ke_hoach_2024: toPrimitiveCell(execution.opening_balance_by_year['2024'] ?? 0, 0),
+    ke_hoach_2025: toPrimitiveCell(execution.opening_balance_by_year['2025'] ?? 0, 0),
+    doanh_so_2026: toPrimitiveCell(execution.generated_by_year['2026'] ?? 0, 0),
+    da_thu_2026: toPrimitiveCell(execution.collected_by_year['2026'] ?? 0, 0),
   }
 }
 
@@ -70,7 +61,7 @@ export function buildDashboardTableModel(
 
     return {
       id: entry.meta.id,
-      pcCode: entry.data.identity.pcCode,
+      pcCode: entry.meta.pcCode,
       status: entry.meta.status,
       values,
     }
