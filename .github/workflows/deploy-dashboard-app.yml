@@ -40,6 +40,22 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Debug frontend env injection
+        run: |
+          if [ -n "${VITE_SUPABASE_URL}" ]; then
+            echo "VITE_SUPABASE_URL is present"
+          else
+            echo "VITE_SUPABASE_URL is missing"
+          fi
+          if [ -n "${VITE_SUPABASE_ANON_KEY}" ]; then
+            echo "VITE_SUPABASE_ANON_KEY is present"
+          else
+            echo "VITE_SUPABASE_ANON_KEY is missing"
+          fi
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+
       - name: Build dashboard app
         run: pnpm --filter @repo/dashboard-app build
         env:

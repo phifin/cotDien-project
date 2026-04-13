@@ -124,7 +124,9 @@ export default function App() {
           </button>
           {isFiltered && (
             <button
-              onClick={() => setFilterState(getInitialFilterState())}
+              onClick={() => {
+                setFilterState(getInitialFilterState())
+              }}
               className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white border border-slate-300 rounded text-slate-700 hover:bg-slate-50 transition-colors"
             >
               Xóa lọc
