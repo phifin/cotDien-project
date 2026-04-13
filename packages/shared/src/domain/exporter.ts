@@ -6,13 +6,27 @@ import type { MonthlyReportPayload } from './types.js'
  * Safely extracts a value from a nested object using a dot-notation path.
  * Example: getNestedValue({ metadata: { year: 2024 } }, 'metadata.year') -> 2024
  */
-export function getNestedValue(obj: any, path: string): string | number | boolean | null {
+export function getNestedValue(obj: unknown, path: string): string | number | boolean | null {
   // Target Rule: js-early-exit
   if (!obj || !path) return null
 
-  return path.split('.').reduce((acc, part) => {
-    return acc && acc[part] !== undefined ? acc[part] : null
-  }, obj)
+  let current: unknown = obj
+  for (const part of path.split('.')) {
+    if (!current || typeof current !== 'object') return null
+    const next = (current as Record<string, unknown>)[part]
+    if (next === undefined) return null
+    current = next
+  }
+
+  if (
+    typeof current === 'string'
+    || typeof current === 'number'
+    || typeof current === 'boolean'
+    || current === null
+  ) {
+    return current
+  }
+  return null
 }
 
 /**
@@ -32,7 +46,7 @@ export function buildFlatExportRow(
     const rawVal = getNestedValue(payload, col.path)
 
     // For missing data, export as empty string to keep CSV clean
-    row[col.label] = (rawVal as string | number | null) ?? ''
+    row[col.label] = rawVal ?? ''
   }
 
   return row

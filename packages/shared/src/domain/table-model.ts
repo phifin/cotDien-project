@@ -71,7 +71,7 @@ export function buildDashboardTableModel(
     return {
       id: entry.meta.id,
       pcCode: entry.data.identity.pcCode,
-      status: entry.meta.status ?? 'DRAFT',
+      status: entry.meta.status,
       values,
     }
   })

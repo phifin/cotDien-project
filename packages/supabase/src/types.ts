@@ -11,30 +11,70 @@ export interface Database {
         Row: {
           id: string
           created_at: string
-          period_year: number
-          period_month: number
+          report_year: number
+          report_month: number
           pc_code: string
-          partner_code: string
-          payload: MonthlyReportPayload
+          pc_name: string
+          payload: MonthlyReportPayload | Record<string, unknown>
           status: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
         Insert: {
           id?: string
           created_at?: string
-          period_year: number
-          period_month: number
+          report_year: number
+          report_month: number
           pc_code: string
-          partner_code: string
-          payload: MonthlyReportPayload
+          pc_name: string
+          payload: MonthlyReportPayload | Record<string, unknown>
           status?: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
         Update: {
-          period_year?: number
-          period_month?: number
+          report_year?: number
+          report_month?: number
           pc_code?: string
-          partner_code?: string
-          payload?: MonthlyReportPayload
+          pc_name?: string
+          payload?: MonthlyReportPayload | Record<string, unknown>
           status?: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
+        }
+      }
+      form_keys: {
+        Row: {
+          id: string
+          access_key: string
+          pc_code: string
+          report_month: number
+          report_year: number
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          access_key: string
+          pc_code: string
+          report_month: number
+          report_year: number
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          access_key?: string
+          pc_code?: string
+          report_month?: number
+          report_year?: number
+          is_active?: boolean
+        }
+      }
+      pcs: {
+        Row: {
+          pc_code: string
+          pc_name: string
+        }
+        Insert: {
+          pc_code: string
+          pc_name: string
+        }
+        Update: {
+          pc_name?: string
         }
       }
     }

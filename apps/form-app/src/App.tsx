@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent } from 'react'
 import { AccessProvider, useAccess } from './contexts/AccessContext'
 import { SpreadsheetTable } from './components/SpreadsheetTable'
 import { useDraftStorage } from './hooks/useDraftStorage'
@@ -20,7 +20,7 @@ function unflattenRow(flatRow: Record<string, string>): Record<string, unknown> 
   const nested: Record<string, unknown> = {}
 
   for (const [path, value] of Object.entries(flatRow)) {
-    if (!path || value == null) continue
+    if (!path || value === '') continue
 
     const parts = path.split('.')
     let cursor: Record<string, unknown> = nested
@@ -58,7 +58,13 @@ function canonicalToFlatRow(payload: MonthlyReportPayload, targetYears: number[]
 
   for (const col of columns) {
     const raw = getNestedValue(payload, col.path)
-    row[col.path] = raw == null ? '' : String(raw)
+    if (raw == null) {
+      row[col.path] = ''
+    } else if (typeof raw === 'string' || typeof raw === 'number' || typeof raw === 'boolean') {
+      row[col.path] = String(raw)
+    } else {
+      row[col.path] = ''
+    }
   }
 
   return row
@@ -69,7 +75,7 @@ function canonicalizeRows(
   access: ReturnType<typeof useAccess>,
 ): MonthlyReportPayload[] {
   return rows
-    .filter((r) => Object.keys(r).length > 0 && Object.values(r).some((v) => String(v).trim() !== ''))
+    .filter((r) => Object.keys(r).length > 0 && Object.values(r).some((v) => v.trim() !== ''))
     .map((raw) => normalizeSubmissionPayload(
       unflattenRow(raw),
       { pcCode: access.pcCode, pcName: access.pcName },
@@ -151,7 +157,7 @@ function FormApp() {
       const csvContent = toCsv(flatRecords)
       downloadFile(
         csvContent,
-        `EVNSPC_${access.pcCode}_${access.period.year}_${access.period.month}.csv`,
+        `EVNSPC_${access.pcCode}_${String(access.period.year)}_${String(access.period.month)}.csv`,
         'text/csv;charset=utf-8;',
       )
     } catch {
@@ -176,7 +182,7 @@ function FormApp() {
 
       downloadFile(
         JSON.stringify(payload, null, 2),
-        `EVNSPC_${access.pcCode}_${access.period.year}_${access.period.month}.json`,
+        `EVNSPC_${access.pcCode}_${String(access.period.year)}_${String(access.period.month)}.json`,
         'application/json;charset=utf-8;',
       )
     } catch {
@@ -201,26 +207,36 @@ function FormApp() {
        setSuccessMsg('Đã gửi báo cáo thành công và xóa nháp cục bộ.')
        clearDraft()
        setRows([])
-    } catch(err: any) {
-       setErrorMsg(err.message || 'Có lỗi xảy ra khi submit data (Kiểm tra Schema Required).')
+    } catch (err: unknown) {
+       const message = err instanceof Error ? err.message : 'Có lỗi xảy ra khi submit data (Kiểm tra Schema Required).'
+       setErrorMsg(message)
     } finally {
        setIsSubmitting(false)
     }
   }
 
   // Action: Import JSON
-  const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportJson = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
 
     const reader = new FileReader()
     reader.onload = (event) => {
       try {
-         const data = JSON.parse(event.target?.result as string)
+         const rawResult = event.target?.result
+         if (typeof rawResult !== 'string') {
+           alert('File JSON không hợp lệ.')
+           return
+         }
+
+         const data: unknown = JSON.parse(rawResult)
+         const dataRecord = (data && typeof data === 'object' && !Array.isArray(data))
+           ? (data as { submissions?: unknown })
+           : null
          const importItems: unknown[] = Array.isArray(data)
            ? data
-           : Array.isArray(data?.submissions)
-           ? data.submissions
+           : Array.isArray(dataRecord?.submissions)
+           ? dataRecord.submissions
            : data
            ? [data]
            : []
@@ -256,7 +272,7 @@ function FormApp() {
          }
 
          setRows(importedRows)
-         alert(`Đã import ${importedRows.length} dòng dữ liệu canonical.`)
+         alert(`Đã import ${String(importedRows.length)} dòng dữ liệu canonical.`)
       } catch {
          alert('File JSON không hợp lệ.')
       }
@@ -299,13 +315,13 @@ function FormApp() {
                 <FileDown className="w-4 h-4" /> Tải CSV
               </button>
 
-              <button onClick={() => saveDraft(rows)} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
+              <button onClick={() => { saveDraft(rows) }} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
                 <Save className="w-4 h-4" /> Lưu Nháp
               </button>
 
               <button
                 disabled={isSubmitting || rows.length === 0}
-                onClick={handleSubmit}
+                onClick={() => { void handleSubmit() }}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ml-2"
               >
                 <Send className="w-4 h-4" />

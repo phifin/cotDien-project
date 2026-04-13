@@ -6,7 +6,7 @@ export function DashboardTable({ dataset }: { dataset: MergedMonthlyDataset }) {
   const targetYears = [2024, 2025, 2026]
   const tableModel = buildDashboardTableModel(dataset, targetYears)
 
-  if (!tableModel.rows || tableModel.rows.length === 0) {
+  if (tableModel.rows.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center p-12 bg-white border border-slate-200 shadow-sm rounded-lg text-slate-500 h-64">
         <p>Không có dữ liệu trong kỳ báo cáo này / bộ lọc hiện tại.</p>
@@ -64,20 +64,20 @@ export function DashboardTable({ dataset }: { dataset: MergedMonthlyDataset }) {
                       row.status === 'SUBMITTED' ? "bg-amber-100 text-amber-700" :
                       "bg-slate-100 text-slate-700"
                     )}>
-                      {row.status || 'DRAFT'}
+                      {row.status}
                     </span>
                   </td>
 
                   {tableModel.columns.map((col) => {
                     const raw = row.values[col.path]
-                    const val = raw ?? ((col.inputType === 'number' || col.inputType === 'currency') ? 0 : '')
+                    const val = col.inputType === 'number' || col.inputType === 'currency' ? Number(raw) : raw
 
                     return (
                       <td key={col.path} className={cn(
                         "p-3 border-r border-slate-200 text-sm text-slate-700",
                         (col.inputType === 'number' || col.inputType === 'currency') && "text-right font-mono"
                       )}>
-                        {col.inputType === 'currency' ? Number(val || 0).toLocaleString() : val}
+                        {col.inputType === 'currency' ? Number(val).toLocaleString() : val}
                       </td>
                     )
                   })}

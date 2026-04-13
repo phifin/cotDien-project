@@ -1,5 +1,5 @@
 import type { MergedMonthlyDataset } from './merger.js'
-import { buildStatsModel, type DashboardStats, type PartnerDebtStats } from './stats.js'
+import { buildStatsModel, type PartnerDebtStats } from './stats.js'
 
 /**
  * Core semantic difference model.

@@ -10,6 +10,11 @@ interface FilterModalProps {
   onClose: () => void
 }
 
+function toContractStatus(value: string): FilterState['contractStatus'] | undefined {
+  if (value === 'ACTIVE' || value === 'EXPIRED') return value
+  return undefined
+}
+
 export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, onClose }: FilterModalProps) {
   const [f, setF] = useState<FilterState>(sanitizeFilterState(initialState))
 
@@ -49,7 +54,7 @@ export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, 
               {pcOptions.map(pc => (
                 <button
                   key={pc}
-                  onClick={() => togglePc(pc)}
+                  onClick={() => { togglePc(pc); }}
                   className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
                     (f.pcCodes || []).includes(pc) ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
@@ -70,7 +75,7 @@ export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, 
               {partnerOptions.map(partner => (
                 <button
                   key={partner}
-                  onClick={() => togglePartner(partner)}
+                  onClick={() => { togglePartner(partner); }}
                   className={`px-3 py-1.5 text-xs font-medium rounded border transition-colors ${
                     (f.partnerCodes || []).includes(partner) ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                   }`}
@@ -87,7 +92,7 @@ export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, 
               <h3 className="text-sm font-medium text-slate-700">Trạng thái HĐ</h3>
               <select 
                 value={f.contractStatus || ""}
-                onChange={(e) => setF({...f, contractStatus: e.target.value ? (e.target.value as any) : undefined})}
+                onChange={(e) => { setF({...f, contractStatus: toContractStatus(e.target.value)}); }}
                 className="w-full h-9 rounded border border-slate-300 text-sm px-3 bg-white"
               >
                 <option value="">Tất cả</option>
@@ -146,20 +151,20 @@ export function FilterModal({ initialState, pcOptions, partnerOptions, onApply, 
           {/* Search */}
           <div className="space-y-3">
              <h3 className="text-sm font-medium text-slate-700">Tìm kiếm tự do (HĐ / Đối tác)</h3>
-             <input type="text" value={f.searchQuery || ''} onChange={e => setF({...f, searchQuery: e.target.value})} placeholder="Nhập từ khóa..." className="w-full h-9 rounded border border-slate-300 px-3 text-sm" />
+             <input type="text" value={f.searchQuery || ''} onChange={e => { setF({...f, searchQuery: e.target.value}); }} placeholder="Nhập từ khóa..." className="w-full h-9 rounded border border-slate-300 px-3 text-sm" />
           </div>
         </div>
 
         <div className="flex items-center justify-between px-5 py-4 border-t border-slate-100 bg-slate-50 rounded-b-lg">
           <button 
-            onClick={() => setF(getInitialFilterState())} 
+            onClick={() => { setF(getInitialFilterState()); }} 
             className="text-sm font-medium text-slate-500 hover:text-slate-800 transition-colors"
           >
             Xóa bộ lọc
           </button>
           <div className="flex gap-2">
             <button onClick={onClose} className="px-4 py-2 text-sm font-medium bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors text-slate-700">Hủy</button>
-            <button onClick={() => onApply(sanitizeFilterState(f))} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm">Áp Dụng Lọc</button>
+            <button onClick={() => { onApply(sanitizeFilterState(f)); }} className="px-4 py-2 text-sm font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors shadow-sm">Áp Dụng Lọc</button>
           </div>
         </div>
       </div>

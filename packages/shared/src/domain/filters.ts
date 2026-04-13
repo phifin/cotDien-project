@@ -65,13 +65,13 @@ export function applyFilters(
   dataset: MergedMonthlyDataset,
   filters: FilterState
 ): MergedMonthlyDataset {
-  const cleanedFilters = sanitizeFilterState(filters || {})
+  const cleanedFilters = sanitizeFilterState(filters)
 
   // Defensive early exit
   if (Object.keys(cleanedFilters).length === 0) return dataset
 
   const { pcCodes, partnerCodes, hasDebt, debtRange, contractStatus, searchQuery } = cleanedFilters
-  const todayRaw = new Date().toISOString().split('T')[0] // 'YYYY-MM-DD' comparison for safe HTML dates
+  const todayRaw = new Date().toISOString().split('T')[0] ?? '' // 'YYYY-MM-DD' comparison for safe HTML dates
 
   const filteredEntries = dataset.entries.filter(entry => {
     const d = entry.data
@@ -97,7 +97,7 @@ export function applyFilters(
     // 5. Contract Status
     if (contractStatus) {
       const expiry = d.contract.validUntil
-      const isExpired = expiry ? expiry < todayRaw! : false
+      const isExpired = expiry ? expiry < todayRaw : false
       if (contractStatus === 'ACTIVE' && isExpired) return false
       if (contractStatus === 'EXPIRED' && !isExpired) return false
     }

@@ -10,7 +10,7 @@ export interface SubmissionFetchDebug {
   latestPerPcCount: number
   parsedCount: number
   skippedCount: number
-  sampleRaw: unknown | null
+  sampleRaw: unknown
   sampleParsed: ParsedSubmissionEntry | null
   skipReasons: string[]
 }
@@ -156,7 +156,9 @@ function normalizeLegacyPayload(row: SubmissionRow): MonthlyReportPayload {
       pcName: typeof general.ten_pc === 'string' ? general.ten_pc : getRowPcName(row),
     },
     general: {
-      partnerCode: typeof general.doi_tac === 'string' && general.doi_tac.length > 0 ? general.doi_tac as any : 'KHAC',
+      partnerCode: typeof general.doi_tac === 'string' && general.doi_tac.length > 0
+        ? (general.doi_tac as MonthlyReportPayload['general']['partnerCode'])
+        : 'KHAC',
       contactPerson: '',
       contactPhone: '',
     },
@@ -240,7 +242,7 @@ export async function fetchSubmissionsByPeriodWithDebug(
   if (error) throw error
 
   const includeDebugPayloads = options.includeDebugPayloads ?? false
-  const rows: SubmissionRow[] = (data ?? []) as SubmissionRow[]
+  const rows: SubmissionRow[] = data as SubmissionRow[]
   const latestRows = pickLatestRowsPerPc(rows)
   const entries: ParsedSubmissionEntry[] = []
   const skipReasons: string[] = []
@@ -295,8 +297,8 @@ export async function fetchSubmissionsForCompare(
   if (resA.error) throw resA.error
   if (resB.error) throw resB.error
 
-  const rawA = (resA.data ?? []) as SubmissionRow[]
-  const rawB = (resB.data ?? []) as SubmissionRow[]
+  const rawA = resA.data as SubmissionRow[]
+  const rawB = resB.data as SubmissionRow[]
   const latestA = pickLatestRowsPerPc(rawA)
   const latestB = pickLatestRowsPerPc(rawB)
 
@@ -315,15 +317,17 @@ export async function fetchSubmissionsForCompare(
  */
 export async function insertSubmission(payload: MonthlyReportPayload) {
   const supabase = getSupabaseBrowserClient()
+  const insertRow: Database['public']['Tables']['submissions']['Insert'] = {
+    report_year: payload.period.year,
+    report_month: payload.period.month,
+    pc_code: payload.identity.pcCode,
+    pc_name: payload.identity.pcName,
+    payload,
+  }
+
   const { data, error } = await supabase
     .from('submissions')
-    .insert({
-      report_year: payload.period.year,
-      report_month: payload.period.month,
-      pc_code: payload.identity.pcCode,
-      pc_name: payload.identity.pcName,
-      payload: payload as any,
-    } as any)
+    .insert(insertRow)
     .select()
     .single()
 
@@ -337,24 +341,24 @@ export async function insertSubmission(payload: MonthlyReportPayload) {
 
 export async function listFormKeys(): Promise<FormKeyRow[]> {
   const supabase = getSupabaseBrowserClient()
-  const { data, error } = await (supabase
-    .from('form_keys' as any)
+  const { data, error } = await supabase
+    .from('form_keys')
     .select('*')
-    .order('created_at', { ascending: false }) as any)
+    .order('created_at', { ascending: false })
 
   if (error) throw error
-  return (data ?? []) as FormKeyRow[]
+  return data as FormKeyRow[]
 }
 
 export async function listPcs(): Promise<PcRow[]> {
   const supabase = getSupabaseBrowserClient()
-  const { data, error } = await (supabase
-    .from('pcs' as any)
+  const { data, error } = await supabase
+    .from('pcs')
     .select('pc_code, pc_name')
-    .order('pc_code', { ascending: true }) as any)
+    .order('pc_code', { ascending: true })
 
   if (error) throw error
-  return (data ?? []) as PcRow[]
+  return data as PcRow[]
 }
 
 export async function createFormKey(input: {
@@ -365,17 +369,21 @@ export async function createFormKey(input: {
   isActive?: boolean
 }): Promise<FormKeyRow> {
   const supabase = getSupabaseBrowserClient()
-  const { data, error } = await ((supabase
-    .from('form_keys' as any)
+  const insertRow: Database['public']['Tables']['form_keys']['Insert'] = {
+    access_key: input.accessKey,
+    pc_code: input.pcCode,
+    report_month: input.reportMonth,
+    report_year: input.reportYear,
+    is_active: input.isActive ?? true,
+  }
+
+  const { data, error } = await supabase
+    .from('form_keys')
     .insert({
-      access_key: input.accessKey,
-      pc_code: input.pcCode,
-      report_month: input.reportMonth,
-      report_year: input.reportYear,
-      is_active: input.isActive ?? true,
-    } as any)
+      ...insertRow,
+    })
     .select('*')
-    .single()) as any)
+    .single()
 
   if (error) throw error
   return data as FormKeyRow
@@ -383,11 +391,8 @@ export async function createFormKey(input: {
 
 export async function setFormKeyActive(id: string, isActive: boolean): Promise<void> {
   const supabase = getSupabaseBrowserClient()
-  const formKeysTable = supabase.from('form_keys' as any) as unknown as {
-    update: (values: Record<string, unknown>) => { eq: (column: string, value: string) => Promise<{ error: Error | null }> }
-  }
-
-  const { error } = await formKeysTable
+  const { error } = await supabase
+    .from('form_keys')
     .update({ is_active: isActive })
     .eq('id', id)
 

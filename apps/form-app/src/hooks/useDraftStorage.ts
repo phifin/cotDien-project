@@ -21,7 +21,7 @@ interface DraftSchema {
  * Automatically loads if pre-existing, returning strict canonical entries.
  */
 export function useDraftStorage(accessContext: AccessContextData) {
-  const storageKey = `${LOCAL_STORAGE_PREFIX}${accessContext.pcCode}_${accessContext.period.year}_${accessContext.period.month}`
+  const storageKey = `${LOCAL_STORAGE_PREFIX}${accessContext.pcCode}_${String(accessContext.period.year)}_${String(accessContext.period.month)}`
 
   const [hasRestored, setHasRestored] = useState(false)
   const [pendingRows, setPendingRows] = useState<Array<Record<string, string>> | null>(null)
@@ -45,7 +45,7 @@ export function useDraftStorage(accessContext: AccessContextData) {
           setSavedAt(parsed.savedAt ?? null)
         }
       }
-    } catch (e) {
+    } catch {
       localStorage.removeItem(storageKey)
     }
     setHasRestored(true)

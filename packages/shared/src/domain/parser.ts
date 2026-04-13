@@ -1,5 +1,6 @@
-import { z, type ZodError } from 'zod'
+import type { ZodError } from 'zod'
 import { ok, err, type Result } from '../types/index.js'
+import { PARTNER_CODES } from './constants.js'
 import { MonthlyReportPayloadSchema } from './schema.js'
 import type { MonthlyReportPayload, PcIdentity, ReportPeriod } from './types.js'
 
@@ -23,13 +24,22 @@ export function parseImportedJson(input: unknown): Result<MonthlyReportPayload, 
  * Ensures year-keyed fields (like execution) are consistently an object map.
  */
 export function normalizeSubmissionPayload(
-  raw: any = {},
+  raw: unknown = {},
   fallbackIdentity?: PcIdentity,
   fallbackPeriod?: ReportPeriod,
 ): MonthlyReportPayload {
-  // Using Zod's deepPartial to safely extract whatever matches our shape, dropping garbage.
-  const partial = MonthlyReportPayloadSchema.deepPartial().safeParse(raw)
-  const safeData = partial.success ? partial.data : {}
+  const safeData: Partial<MonthlyReportPayload> = (
+    raw && typeof raw === 'object' && !Array.isArray(raw)
+      ? (raw as Partial<MonthlyReportPayload>)
+      : {}
+  )
+
+  const partnerCode = (
+    typeof safeData.general?.partnerCode === 'string'
+    && (PARTNER_CODES as readonly string[]).includes(safeData.general.partnerCode)
+  )
+    ? safeData.general.partnerCode
+    : 'KHAC'
 
   return {
     period: {
@@ -41,7 +51,7 @@ export function normalizeSubmissionPayload(
       pcName: safeData.identity?.pcName ?? fallbackIdentity?.pcName ?? '',
     },
     general: {
-      partnerCode: (safeData.general?.partnerCode as any) ?? 'KHAC',
+      partnerCode,
       contactPerson: safeData.general?.contactPerson ?? '',
       contactPhone: safeData.general?.contactPhone ?? '',
     },
@@ -92,12 +102,8 @@ export function normalizeSubmissionPayload(
  */
 export function hydrateFormFromCanonical(payload: MonthlyReportPayload): MonthlyReportPayload {
   // Deep clone to strip external references / proxies before pushing to local state.
-  const clone: MonthlyReportPayload = JSON.parse(JSON.stringify(payload))
-  
-  // Guarantee year map exists even if empty in JSON
-  if (!clone.execution) clone.execution = {}
-  
-  return clone
+  const clonedUnknown: unknown = JSON.parse(JSON.stringify(payload))
+  return MonthlyReportPayloadSchema.parse(clonedUnknown)
 }
 
 export interface ValidationContext {
@@ -140,7 +146,7 @@ export function validateImportedJsonAgainstContext(
       field: 'year',
       expected: context.expectedYear,
       actual: payload.period.year,
-      message: `File is for year ${payload.period.year}, expected ${context.expectedYear}.`,
+      message: `File is for year ${String(payload.period.year)}, expected ${String(context.expectedYear)}.`,
     })
   }
 
@@ -149,7 +155,7 @@ export function validateImportedJsonAgainstContext(
       field: 'month',
       expected: context.expectedMonth,
       actual: payload.period.month,
-      message: `File is for month ${payload.period.month}, expected ${context.expectedMonth}.`,
+      message: `File is for month ${String(payload.period.month)}, expected ${String(context.expectedMonth)}.`,
     })
   }
 

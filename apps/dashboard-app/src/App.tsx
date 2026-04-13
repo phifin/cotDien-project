@@ -16,6 +16,7 @@ const fetcher = async ({ y, m }: { y: number, m: number }) => {
   const merged = mergeMonthlySubmissions({ year: y, month: m }, entries)
   return { merged, debug }
 }
+type PipelineData = Awaited<ReturnType<typeof fetcher>>
 
 export default function App() {
   const [period, setPeriod] = useState({ year: 2026, month: 4 })
@@ -26,7 +27,7 @@ export default function App() {
   const [showStatsModal, setShowStatsModal] = useState(false)
 
   // Automatic SWR deduplication and revalidation on focus
-  const { data: pipelineData, error, isLoading, isValidating, mutate } = useSWR({ y: period.year, m: period.month }, fetcher, {
+  const { data: pipelineData, error, isLoading, isValidating, mutate } = useSWR<PipelineData, Error>({ y: period.year, m: period.month }, fetcher, {
     keepPreviousData: true 
   })
 
@@ -70,11 +71,11 @@ export default function App() {
   }, [pipelineData, filteredDataset])
 
   if (activeView === 'compare') {
-    return <CompareView onBack={() => setActiveView('table')} />
+    return <CompareView onBack={() => { setActiveView('table'); }} />
   }
 
   if (activeView === 'keys') {
-    return <KeyManagerView onBack={() => setActiveView('table')} />
+    return <KeyManagerView onBack={() => { setActiveView('table'); }} />
   }
 
   return (
@@ -89,14 +90,14 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={() => setActiveView('keys')} className="px-4 py-2 rounded font-medium text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors text-slate-300">
+          <button onClick={() => { setActiveView('keys'); }} className="px-4 py-2 rounded font-medium text-sm flex items-center gap-2 hover:bg-slate-800 transition-colors text-slate-300">
             <KeyRound className="w-4 h-4"/> Token / Khóa
           </button>
           <div className="w-px h-6 bg-slate-700 mx-2"></div>
           
           <select 
             value={period.month} 
-            onChange={e => setPeriod({...period, month: Number(e.target.value)})}
+            onChange={e => { setPeriod({...period, month: Number(e.target.value)}); }}
             className="bg-slate-800 border border-slate-700 text-white text-sm h-9 rounded px-3 font-medium outline-none focus:border-blue-500 transition-colors"
           >
             {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
@@ -104,7 +105,7 @@ export default function App() {
 
           <select 
             value={period.year} 
-            onChange={e => setPeriod({...period, year: Number(e.target.value)})}
+            onChange={e => { setPeriod({...period, year: Number(e.target.value)}); }}
             className="bg-slate-800 border border-slate-700 text-white text-sm h-9 rounded px-3 font-medium outline-none focus:border-blue-500 transition-colors"
           >
             {[2024,2025,2026].map(y => <option key={y} value={y}>Năm {y}</option>)}
@@ -116,7 +117,7 @@ export default function App() {
       <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 sticky top-0 z-10 shadow-sm">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setShowFilterModal(true)} 
+            onClick={() => { setShowFilterModal(true); }} 
             className={`inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded border transition-colors ${isFiltered ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
           >
             <Filter className="w-4 h-4" /> 
@@ -133,16 +134,16 @@ export default function App() {
             </button>
           )}
           
-          <button onClick={() => setShowStatsModal(true)} disabled={!stats} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors disabled:opacity-50">
+          <button onClick={() => { setShowStatsModal(true); }} disabled={!stats} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors disabled:opacity-50">
             <BarChart3 className="w-4 h-4 text-emerald-600" /> Báo Cáo Thông Kê
           </button>
           
-          <button onClick={() => setActiveView('compare')} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors">
+          <button onClick={() => { setActiveView('compare'); }} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors">
             <Scale className="w-4 h-4 text-blue-600" /> Công Cụ So Sánh
           </button>
         </div>
 
-        <button onClick={() => mutate()} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors ${isValidating ? 'opacity-50 pointer-events-none' : ''}`}>
+        <button onClick={() => { void mutate() }} className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors ${isValidating ? 'opacity-50 pointer-events-none' : ''}`}>
            <RefreshCw className={`w-4 h-4 ${isValidating ? 'animate-spin' : ''}`} /> Tải Lại
         </button>
       </div>
@@ -202,12 +203,12 @@ export default function App() {
           pcOptions={filterOptions.pcOptions}
           partnerOptions={filterOptions.partnerOptions}
           onApply={f => { setFilterState(sanitizeFilterState(f)); setShowFilterModal(false); }} 
-          onClose={() => setShowFilterModal(false)}
+          onClose={() => { setShowFilterModal(false); }}
         />
       )}
 
       {showStatsModal && stats && (
-        <StatsOverviewModal stats={stats} onClose={() => setShowStatsModal(false)} />
+        <StatsOverviewModal stats={stats} onClose={() => { setShowStatsModal(false); }} />
       )}
     </div>
   )

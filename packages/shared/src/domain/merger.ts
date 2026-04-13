@@ -104,11 +104,11 @@ export function mergeMonthlySubmissions(
       }
 
       // We explicitly bypass '!' or non-null checks since we just initialized it above safely
-      const agg = summary.executionAggregates[yearStr]
-      if (agg) {
-        agg.totalPlanned += exec.planned
-        agg.totalActual += exec.actual
-      }
+      const agg = summary.executionAggregates[yearStr] ?? (
+        summary.executionAggregates[yearStr] = { totalPlanned: 0, totalActual: 0 }
+      )
+      agg.totalPlanned += exec.planned
+      agg.totalActual += exec.actual
     }
   }
 

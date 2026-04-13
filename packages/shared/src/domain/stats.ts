@@ -81,7 +81,9 @@ function createEmptyDebtStats(partnerCode: string): PartnerDebtStats {
   }
 }
 
-function mergeAgingBuckets(target: PartnerDebtStats['agingBuckets'], source: any) {
+type AgingBuckets = PartnerDebtStats['agingBuckets']
+
+function mergeAgingBuckets(target: AgingBuckets, source?: Partial<AgingBuckets>) {
   if (!source) return
   target.below6Months += source.below6Months ?? 0
   target.from6To12Months += source.from6To12Months ?? 0
@@ -175,7 +177,7 @@ export function buildStatsModel(dataset: MergedMonthlyDataset): DashboardStats {
 
     // 4. Difficult Partners Tracking
     if (partner === 'VTVCAB' || partner === 'SCTV') {
-      const pStats = stats.difficultPartners[partner as 'VTVCAB' | 'SCTV']
+      const pStats = stats.difficultPartners[partner]
       pStats.totalRevenue += d.revenueResult.expectedRevenue
       pStats.totalDebt += d.debtAnalysis.totalDebt
       

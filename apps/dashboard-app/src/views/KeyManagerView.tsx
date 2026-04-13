@@ -17,7 +17,7 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
   })
 
   const keys = data?.keys ?? []
-  const pcs = data?.pcs ?? []
+  const pcs = useMemo(() => data?.pcs ?? [], [data?.pcs])
 
   const selectedPcName = useMemo(() => {
     const match = pcs.find((pc) => pc.pc_code === pcCode)
@@ -26,7 +26,7 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
 
   const generateAccessKey = (code: string, reportYear: number, reportMonth: number): string => {
     const random = Math.random().toString(36).slice(2, 8)
-    return `${code.toLowerCase()}-${reportMonth}${reportYear}-${random}`
+    return `${code.toLowerCase()}-${String(reportMonth)}${String(reportYear)}-${random}`
   }
 
   const handleCreate = async () => {
@@ -67,7 +67,7 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
 
   const copyRef = (token: string) => {
     const url = `${window.location.origin.replace('5174', '5173')}/?key=${encodeURIComponent(token)}`
-    navigator.clipboard.writeText(url)
+    void navigator.clipboard.writeText(url)
     alert('Đã copy đường dẫn Form App!')
   }
 
@@ -80,7 +80,7 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
         </h2>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => mutate()}
+            onClick={() => { void mutate() }}
             className="px-3 py-2 text-sm font-medium bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors text-slate-700 inline-flex items-center gap-2"
           >
             <RefreshCw className="w-4 h-4" /> Làm mới
@@ -98,21 +98,21 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
             <h3 className="text-sm font-semibold text-slate-800 mb-4">Tạo Access Key Mới</h3>
             
             <div className="flex gap-4 items-center">
-               <select value={pcCode} onChange={(e) => setPcCode(e.target.value)} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-64">
+               <select value={pcCode} onChange={(e) => { setPcCode(e.target.value); }} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-64">
                  <option value="">Chọn PC...</option>
                  {pcs.map((pc: PcRow) => <option key={pc.pc_code} value={pc.pc_code}>{pc.pc_code} - {pc.pc_name}</option>)}
                </select>
                
-               <select value={month} onChange={(e) => setMonth(Number(e.target.value))} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-32">
+               <select value={month} onChange={(e) => { setMonth(Number(e.target.value)); }} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-32">
                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
                </select>
 
-               <select value={year} onChange={(e) => setYear(Number(e.target.value))} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-32">
+               <select value={year} onChange={(e) => { setYear(Number(e.target.value)); }} className="h-10 rounded border border-slate-300 text-sm px-3 bg-white w-32">
                  {[2024,2025,2026,2027].map(y => <option key={y} value={y}>Năm {y}</option>)}
                </select>
 
                <button 
-                  onClick={handleCreate}
+                  onClick={() => { void handleCreate() }}
                  disabled={creating || !pcCode}
                  className="h-10 px-4 bg-blue-600 text-white rounded font-medium text-sm hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors ml-auto shadow-sm"
                >
@@ -154,11 +154,11 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <button onClick={() => copyRef(k.access_key)} className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-white border border-blue-200 transition-colors" title="Copy URL">
+                          <button onClick={() => { copyRef(k.access_key); }} className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-white border border-blue-200 transition-colors" title="Copy URL">
                             <Copy className="w-4 h-4"/>
                           </button>
                           <button
-                            onClick={() => handleToggleActive(k)}
+                            onClick={() => { void handleToggleActive(k) }}
                             disabled={updatingId === k.id}
                             className="px-3 py-2 text-xs font-medium rounded border border-slate-300 bg-white hover:bg-slate-50 disabled:opacity-50"
                           >

@@ -24,7 +24,7 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
 
   // Defensive: use ?? [] to guard against any undefined definitions
   const columns = useMemo(
-    () => resolveVisibleColumns(MONTHLY_REPORT_FORM_DEFS ?? [], targetYears),
+    () => resolveVisibleColumns(MONTHLY_REPORT_FORM_DEFS, targetYears),
     [targetYears]
   )
 
@@ -126,7 +126,7 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
                           : 'text'
                       }
                       value={row[col.path] || ''}
-                      onChange={(e) => updateCell(rIndex, col.path, e.target.value)}
+                      onChange={(e) => { updateCell(rIndex, col.path, e.target.value) }}
                       readOnly={col.isReadOnly}
                       className={cn(
                         'w-full h-11 px-3 py-2 text-sm text-slate-900 bg-transparent border-none focus:ring-0 focus:outline-none focus:bg-blue-50/70 transition-colors',
@@ -141,14 +141,14 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
                 <td className="p-0 border-l border-slate-200 sticky right-0 bg-white group-hover:bg-slate-50">
                   <div className="flex h-11 items-center justify-center gap-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={() => duplicateRow(rIndex)}
+                      onClick={() => { duplicateRow(rIndex) }}
                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded"
                       title="Nhân bản dòng"
                     >
                       <Copy className="w-4 h-4" />
                     </button>
                     <button
-                      onClick={() => deleteRow(rIndex)}
+                      onClick={() => { deleteRow(rIndex) }}
                       className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded"
                       title="Xóa dòng"
                     >

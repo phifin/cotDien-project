@@ -15,39 +15,71 @@ type AccessState = LoadingState | ErrorState | SuccessState
 
 const AccessContext = createContext<AccessContextData | undefined>(undefined)
 
+interface FormKeyRecord {
+  pc_code: string
+  report_year: number
+  report_month: number
+  is_active: boolean
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  return value as Record<string, unknown>
+}
+
+function toFormKeyRecord(value: unknown): FormKeyRecord | null {
+  const record = asRecord(value)
+  if (!record) return null
+  if (typeof record.pc_code !== 'string') return null
+  if (typeof record.report_year !== 'number') return null
+  if (typeof record.report_month !== 'number') return null
+  if (typeof record.is_active !== 'boolean') return null
+
+  return {
+    pc_code: record.pc_code,
+    report_year: record.report_year,
+    report_month: record.report_month,
+    is_active: record.is_active,
+  }
+}
+
+function getPcName(value: unknown): string | null {
+  const record = asRecord(value)
+  if (!record) return null
+  return typeof record.pc_name === 'string' ? record.pc_name : null
+}
+
 /**
  * Resolves access by querying the `form_keys` table in Supabase.
  * Keys are plain text (e.g. "demo-vl-032026") — NO Base64 decoding.
  */
 async function resolveAccessKey(key: string): Promise<AccessContextData> {
   // 1. Look up the key in form_keys
-  const { data: formKey, error: keyError } = await (supabase
-    .from('form_keys' as any)
+  const { data: formKey, error: keyError } = await supabase
+    .from('form_keys')
     .select('*')
     .eq('access_key', key)
-    .maybeSingle() as any)
+    .maybeSingle()
 
   if (keyError) throw new Error('Invalid access key')
-  if (!formKey) throw new Error('Invalid access key')
-  if (formKey.is_active === false) throw new Error('Inactive access key')
+  const resolvedKey = toFormKeyRecord(formKey)
+  if (!resolvedKey) throw new Error('Invalid access key')
+  if (!resolvedKey.is_active) throw new Error('Inactive access key')
 
   // 2. Fetch matching PC from pcs table
-  const { data: pc, error: pcError } = await (supabase
-    .from('pcs' as any)
+  const { data: pc, error: pcError } = await supabase
+    .from('pcs')
     .select('*')
-    .eq('pc_code', formKey.pc_code)
-    .maybeSingle() as any)
-
-  if (pcError || !pc) {
-    // We still allow access with fallback name to keep form usable.
-  }
+    .eq('pc_code', resolvedKey.pc_code)
+    .maybeSingle()
+  void pcError
 
   return {
-    pcCode: formKey.pc_code,
-    pcName: pc?.pc_name ?? formKey.pc_code,
+    pcCode: resolvedKey.pc_code,
+    pcName: getPcName(pc) ?? resolvedKey.pc_code,
     period: {
-      year: formKey.report_year,
-      month: formKey.report_month,
+      year: resolvedKey.report_year,
+      month: resolvedKey.report_month,
     },
     rawKey: key,
   }
@@ -66,8 +98,11 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
     }
 
     resolveAccessKey(key)
-      .then((access) => setState({ status: 'success', access }))
-      .catch((err: Error) => setState({ status: 'error', error: err.message || 'Invalid access key' }))
+      .then((access) => { setState({ status: 'success', access }) })
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : 'Invalid access key'
+        setState({ status: 'error', error: message })
+      })
   }, [])
 
   if (state.status === 'loading') {

@@ -1,5 +1,5 @@
-import { z } from 'zod'
-import {
+import type * as z from 'zod'
+import type {
   ReportPeriodSchema,
   PcIdentitySchema,
   GeneralInfoSchema,
@@ -40,5 +40,5 @@ export type MonthlyReportPayload = z.infer<typeof MonthlyReportPayloadSchema>
  */
 export function buildReportId(pcCode: string, year: number, month: number): string {
   const paddedMonth = month.toString().padStart(2, '0')
-  return `REPORT_${pcCode}_${year}_${paddedMonth}`
+  return `REPORT_${pcCode}_${String(year)}_${paddedMonth}`
 }

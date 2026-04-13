@@ -38,7 +38,7 @@ export function resolveVisibleColumns(
       return targetYears.map((year): ResolvedColumn => {
         return {
           path: def.path.replace('[year]', String(year)),
-          label: `${def.label} (${year})`,
+          label: `${def.label} (${String(year)})`,
           section: def.section, // Optionally interleaf year into section: `${def.section} ${year}`
           inputType: def.inputType,
           widthHint: def.widthHint,

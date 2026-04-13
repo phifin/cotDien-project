@@ -143,23 +143,23 @@ export function CompareView({ onBack }: { onBack: () => void }) {
 
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
-            <select value={periodA.month} onChange={e => setPeriodA({...periodA, month: Number(e.target.value)})} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
+            <select value={periodA.month} onChange={e => { setPeriodA({...periodA, month: Number(e.target.value)}); }} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
               {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
             </select>
-            <select value={periodA.year} onChange={e => setPeriodA({...periodA, year: Number(e.target.value)})} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
+            <select value={periodA.year} onChange={e => { setPeriodA({...periodA, year: Number(e.target.value)}); }} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
               {[2024, 2025, 2026].map(y => <option key={y} value={y}>Năm {y}</option>)}
             </select>
             <ArrowRight className="w-4 h-4 text-slate-400"/>
-            <select value={periodB.month} onChange={e => setPeriodB({...periodB, month: Number(e.target.value)})} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
+            <select value={periodB.month} onChange={e => { setPeriodB({...periodB, month: Number(e.target.value)}); }} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
               {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => <option key={m} value={m}>Tháng {m}</option>)}
             </select>
-            <select value={periodB.year} onChange={e => setPeriodB({...periodB, year: Number(e.target.value)})} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
+            <select value={periodB.year} onChange={e => { setPeriodB({...periodB, year: Number(e.target.value)}); }} className="bg-white border border-slate-200 text-sm h-8 rounded px-2 font-medium">
               {[2024, 2025, 2026].map(y => <option key={y} value={y}>Năm {y}</option>)}
             </select>
           </div>
 
           <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-            <input type="checkbox" checked={showOnlyDiffs} onChange={e => setShowOnlyDiffs(e.target.checked)} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+            <input type="checkbox" checked={showOnlyDiffs} onChange={e => { setShowOnlyDiffs(e.target.checked); }} className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
             Chỉ hiện chênh lệch ròng
           </label>
         </div>
