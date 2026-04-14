@@ -1,19 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-
-export interface AccessContextData {
-  pcCode: string
-  pcName: string
-  period: { year: number; month: number }
-  rawKey: string
-}
+import { AccessContext, type AccessContextData } from './accessContext'
 
 type LoadingState = { status: 'loading' }
 type ErrorState = { status: 'error'; error: string }
 type SuccessState = { status: 'success'; access: AccessContextData }
 type AccessState = LoadingState | ErrorState | SuccessState
-
-const AccessContext = createContext<AccessContextData | undefined>(undefined)
 
 interface FormKeyRecord {
   pc_code: string
@@ -132,10 +124,4 @@ export function AccessProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AccessContext.Provider>
   )
-}
-
-export function useAccess() {
-  const context = useContext(AccessContext)
-  if (!context) throw new Error('useAccess must be used within AccessProvider')
-  return context
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
-import type { AccessContextData } from '../contexts/AccessContext'
+import type { AccessContextData } from '../contexts/accessContext'
 
 const LOCAL_STORAGE_PREFIX = 'evnspc_draft_'
 

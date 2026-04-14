@@ -3,6 +3,26 @@ import { ok, err, type Result } from '../types/index.js'
 import { MonthlyReportPayloadSchema } from './schema.js'
 import type { MonthlyReportPayload, PcIdentity, ReportPeriod } from './types.js'
 
+function coerceNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const t = value.trim().replace(/[\s,]/g, '')
+    if (t === '') return 0
+    const n = Number(t)
+    return Number.isFinite(n) ? n : 0
+  }
+  return 0
+}
+
+function coerceYearMap(value: unknown): Record<string, number> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    if (/^\d{4}$/.test(k)) out[k] = coerceNumber(v)
+  }
+  return out
+}
+
 /**
  * Validates untrusted imported JSON against the canonical schema.
  * Rejects structurally invalid payloads entirely.
@@ -40,36 +60,36 @@ export function normalizeSubmissionPayload(
     general: {
       ten_pc: safeData.general?.ten_pc ?? fallbackIdentity?.pcName ?? '',
       doi_tac: safeData.general?.doi_tac ?? '',
-      doanh_thu_ke_hoach_nam: safeData.general?.doanh_thu_ke_hoach_nam ?? 0,
+      doanh_thu_ke_hoach_nam: coerceNumber(safeData.general?.doanh_thu_ke_hoach_nam),
     },
     contract: {
       so_hd_phu_luc_hop_dong: safeData.contract?.so_hd_phu_luc_hop_dong ?? '',
       ngay_ky_hd_plhd: safeData.contract?.ngay_ky_hd_plhd ?? '',
       hieu_luc_den: safeData.contract?.hieu_luc_den ?? '',
-      gia_tri_hop_dong_nam: safeData.contract?.gia_tri_hop_dong_nam ?? 0,
+      gia_tri_hop_dong_nam: coerceNumber(safeData.contract?.gia_tri_hop_dong_nam),
     },
     execution: {
-      closing_balance: safeData.execution?.closing_balance ?? 0,
-      generated_by_year: safeData.execution?.generated_by_year ?? {},
-      collected_by_year: safeData.execution?.collected_by_year ?? {},
-      opening_balance_by_year: safeData.execution?.opening_balance_by_year ?? {},
+      closing_balance: coerceNumber(safeData.execution?.closing_balance),
+      generated_by_year: coerceYearMap(safeData.execution?.generated_by_year),
+      collected_by_year: coerceYearMap(safeData.execution?.collected_by_year),
+      opening_balance_by_year: coerceYearMap(safeData.execution?.opening_balance_by_year),
     },
     debt_analysis: {
-      duoi_6_thang: safeData.debt_analysis?.duoi_6_thang ?? 0,
-      tu_6_den_duoi_12_thang: safeData.debt_analysis?.tu_6_den_duoi_12_thang ?? 0,
-      tu_12_den_duoi_24_thang: safeData.debt_analysis?.tu_12_den_duoi_24_thang ?? 0,
-      tu_24_den_duoi_36_thang: safeData.debt_analysis?.tu_24_den_duoi_36_thang ?? 0,
-      tren_36_thang: safeData.debt_analysis?.tren_36_thang ?? 0,
+      duoi_6_thang: coerceNumber(safeData.debt_analysis?.duoi_6_thang),
+      tu_6_den_duoi_12_thang: coerceNumber(safeData.debt_analysis?.tu_6_den_duoi_12_thang),
+      tu_12_den_duoi_24_thang: coerceNumber(safeData.debt_analysis?.tu_12_den_duoi_24_thang),
+      tu_24_den_duoi_36_thang: coerceNumber(safeData.debt_analysis?.tu_24_den_duoi_36_thang),
+      tren_36_thang: coerceNumber(safeData.debt_analysis?.tren_36_thang),
     },
     revenue_result: {
-      doanh_thu_thuc_hien_nam: safeData.revenue_result?.doanh_thu_thuc_hien_nam ?? 0,
-      ti_le_thuc_hien: safeData.revenue_result?.ti_le_thuc_hien ?? 0,
+      doanh_thu_thuc_hien_nam: coerceNumber(safeData.revenue_result?.doanh_thu_thuc_hien_nam),
+      ti_le_thuc_hien: coerceNumber(safeData.revenue_result?.ti_le_thuc_hien),
     },
     pole_quantities: {
-      duoi_8_5m: safeData.pole_quantities?.duoi_8_5m ?? 0,
-      tu_8_5_den_10_5m: safeData.pole_quantities?.tu_8_5_den_10_5m ?? 0,
-      tu_10_5_den_12_5m: safeData.pole_quantities?.tu_10_5_den_12_5m ?? 0,
-      tren_12_5m: safeData.pole_quantities?.tren_12_5m ?? 0,
+      duoi_8_5m: coerceNumber(safeData.pole_quantities?.duoi_8_5m),
+      tu_8_5_den_10_5m: coerceNumber(safeData.pole_quantities?.tu_8_5_den_10_5m),
+      tu_10_5_den_12_5m: coerceNumber(safeData.pole_quantities?.tu_10_5_den_12_5m),
+      tren_12_5m: coerceNumber(safeData.pole_quantities?.tren_12_5m),
     },
   }
 }

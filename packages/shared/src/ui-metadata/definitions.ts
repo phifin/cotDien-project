@@ -2,32 +2,36 @@ import type { FormFieldDefinition } from './types.js'
 
 export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
   {
-    path: 'general.ten_pc',
-    label: 'TÊN PC',
-    section: 'THÔNG TIN CHUNG',
-    inputType: 'text',
-    isRequired: true,
-    displayOrder: 1,
-    isReadOnly: true,
-    isDerivedFromContext: true,
-    widthHint: 'w-48',
-  },
-  {
-    path: 'general.doanh_thu_ke_hoach_nam',
-    label: 'Doanh thu kế hoạch năm (trước thuế VAT)',
-    section: 'THÔNG TIN CHUNG',
-    inputType: 'currency',
-    isRequired: true,
-    displayOrder: 2,
-    widthHint: 'w-40',
-  },
-  {
     path: 'general.doi_tac',
     label: 'ĐỐI TÁC',
     section: 'THÔNG TIN CHUNG',
-    inputType: 'text',
+    inputType: 'select',
     isRequired: true,
-    displayOrder: 3,
+    displayOrder: 1,
+    options: [
+      'VNPT',
+      'FPT',
+      'MOBI',
+      'SCTV',
+      'VTVCAB',
+      'VNMOBILE',
+      'CMC',
+      'HTC',
+      'ACT',
+      'TPCOMS',
+      'TTVT KVII',
+      'TIVICOM',
+      'NETNAM',
+      'HAILONG',
+      'HTV',
+      'TANVIETSINH',
+      'HTMMN',
+      'KHOINGHIEP',
+      'STC',
+      'HUNGMANH',
+      'VIETTHANH',
+      'KHAC',
+    ],
     widthHint: 'w-40',
   },
   {
@@ -36,7 +40,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'HỢP ĐỒNG',
     inputType: 'text',
     isRequired: true,
-    displayOrder: 4,
+    displayOrder: 2,
     widthHint: 'w-40',
   },
   {
@@ -45,7 +49,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'HỢP ĐỒNG',
     inputType: 'date',
     isRequired: true,
-    displayOrder: 5,
+    displayOrder: 3,
     widthHint: 'w-32',
   },
   {
@@ -54,7 +58,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'HỢP ĐỒNG',
     inputType: 'date',
     isRequired: true,
-    displayOrder: 6,
+    displayOrder: 4,
     widthHint: 'w-32',
   },
   {
@@ -63,7 +67,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'HỢP ĐỒNG',
     inputType: 'currency',
     isRequired: true,
-    displayOrder: 7,
+    displayOrder: 5,
     widthHint: 'w-40',
   },
   {
@@ -72,7 +76,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 8,
+    displayOrder: 6,
     widthHint: 'w-32',
   },
   {
@@ -81,7 +85,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 9,
+    displayOrder: 7,
     widthHint: 'w-32',
   },
   {
@@ -90,7 +94,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 10,
+    displayOrder: 8,
     widthHint: 'w-32',
   },
   {
@@ -99,7 +103,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 11,
+    displayOrder: 9,
     isYearKeyed: true,
     widthHint: 'w-40',
   },
@@ -109,7 +113,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 12,
+    displayOrder: 10,
     widthHint: 'w-32',
   },
   {
@@ -118,7 +122,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 13,
+    displayOrder: 11,
     widthHint: 'w-32',
   },
   {
@@ -127,7 +131,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 14,
+    displayOrder: 12,
     widthHint: 'w-32',
   },
   {
@@ -136,7 +140,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'TÌNH HÌNH THỰC HIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 15,
+    displayOrder: 13,
     widthHint: 'w-40',
   },
   {
@@ -145,7 +149,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'SỐ LƯỢNG CỘT ĐIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 16,
+    displayOrder: 14,
     widthHint: 'w-32',
   },
   {
@@ -154,7 +158,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'SỐ LƯỢNG CỘT ĐIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 17,
+    displayOrder: 15,
     widthHint: 'w-32',
   },
   {
@@ -163,7 +167,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'SỐ LƯỢNG CỘT ĐIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 18,
+    displayOrder: 16,
     widthHint: 'w-32',
   },
   {
@@ -172,7 +176,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'SỐ LƯỢNG CỘT ĐIỆN',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 19,
+    displayOrder: 17,
     widthHint: 'w-32',
   },
   {
@@ -181,7 +185,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'DOANH THU',
     inputType: 'currency',
     isRequired: true,
-    displayOrder: 20,
+    displayOrder: 18,
     widthHint: 'w-40',
   },
   {
@@ -190,7 +194,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'DOANH THU',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 21,
+    displayOrder: 19,
     widthHint: 'w-32',
   },
   {
@@ -199,7 +203,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'PHÂN TÍCH NỢ',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 22,
+    displayOrder: 20,
     widthHint: 'w-40',
   },
   {
@@ -208,7 +212,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'PHÂN TÍCH NỢ',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 23,
+    displayOrder: 21,
     widthHint: 'w-40',
   },
   {
@@ -217,7 +221,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'PHÂN TÍCH NỢ',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 24,
+    displayOrder: 22,
     widthHint: 'w-40',
   },
   {
@@ -226,7 +230,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'PHÂN TÍCH NỢ',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 25,
+    displayOrder: 23,
     widthHint: 'w-40',
   },
   {
@@ -235,7 +239,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'PHÂN TÍCH NỢ',
     inputType: 'number',
     isRequired: true,
-    displayOrder: 26,
+    displayOrder: 24,
     widthHint: 'w-40',
   },
   {
@@ -244,7 +248,7 @@ export const MONTHLY_REPORT_FORM_DEFS: FormFieldDefinition[] = [
     section: 'GHI CHÚ',
     inputType: 'text',
     isRequired: false,
-    displayOrder: 27,
+    displayOrder: 25,
     widthHint: 'w-64',
   },
 ]

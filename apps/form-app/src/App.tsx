@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo, type ChangeEvent } from 'react'
-import { AccessProvider, useAccess } from './contexts/AccessContext'
+import { AccessProvider } from './contexts/AccessContext'
+import { useAccess } from './contexts/accessContext'
 import { SpreadsheetTable } from './components/SpreadsheetTable'
 import { useDraftStorage } from './hooks/useDraftStorage'
 import { FileUp, FileDown, Save, Send } from 'lucide-react'
@@ -12,6 +13,7 @@ import {
   validateImportedJsonAgainstContext,
   hydrateFormFromCanonical,
   type MonthlyReportPayload,
+  resolveYearlyPlannedRevenue,
 } from '@repo/shared/domain'
 import { insertSubmission } from '@repo/supabase/queries'
 import { resolveVisibleColumns, MONTHLY_REPORT_FORM_DEFS } from '@repo/shared/ui-metadata'
@@ -123,12 +125,17 @@ function FormApp() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const yearlyPlannedRevenue = useMemo(() => {
+    return resolveYearlyPlannedRevenue({ pcCode: access.pcCode, pcName: access.pcName })
+  }, [access.pcCode, access.pcName])
+
   const applyContextDerivedValues = useCallback(
     (inputRows: Array<Record<string, string>>) => inputRows.map((row) => ({
       ...row,
       'general.ten_pc': access.pcName,
+      'general.doanh_thu_ke_hoach_nam': String(yearlyPlannedRevenue ?? 0),
     })),
-    [access.pcName],
+    [access.pcName, yearlyPlannedRevenue],
   )
 
   useEffect(() => {
@@ -359,6 +366,27 @@ function FormApp() {
       )}
 
       <main className="flex-1 overflow-hidden p-6">
+        <div className="mb-4 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Đơn vị</div>
+              <div className="mt-1 text-slate-800 font-medium">{access.pcName}</div>
+              <div className="text-xs text-slate-500 font-mono">{access.pcCode}</div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Kỳ báo cáo</div>
+              <div className="mt-1 text-slate-800 font-medium">
+                Tháng {access.period.month}/{access.period.year}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide">Doanh thu kế hoạch năm (trước VAT)</div>
+              <div className="mt-1 text-slate-800 font-semibold font-mono">
+                {(yearlyPlannedRevenue ?? 0).toLocaleString()} VND
+              </div>
+            </div>
+          </div>
+        </div>
         <SpreadsheetTable 
           period={access.period}
           rows={rows}
