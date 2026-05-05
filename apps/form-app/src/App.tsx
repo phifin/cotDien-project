@@ -18,6 +18,7 @@ import {
   resolveYearlyPlannedRevenue,
 } from '@repo/shared/domain'
 import { insertSubmission } from '@repo/supabase/queries'
+import { supabase } from './lib/supabaseClient'
 import { resolveVisibleColumns, MONTHLY_REPORT_FORM_DEFS } from '@repo/shared/ui-metadata'
 
 function unflattenRow(flatRow: Record<string, string>): Record<string, unknown> {
@@ -167,6 +168,29 @@ function toCsv(records: Array<Record<string, string | number | null>>): string {
   return `\uFEFF${lines.join('\n')}`
 }
 
+async function notifyTelegramSubmission(input: {
+  pcCode: string
+  pcName: string
+  reportMonth: number
+  reportYear: number
+  rowCount: number
+  submissionId: string
+}): Promise<void> {
+  try {
+    const notifyResult: unknown = await supabase.functions.invoke<unknown>('notify-telegram', {
+      body: input,
+    })
+    const notifyError = notifyResult && typeof notifyResult === 'object'
+      ? (notifyResult as { error?: unknown }).error
+      : null
+    if (notifyError) {
+      console.warn('Telegram notify failed', notifyError)
+    }
+  } catch (err) {
+    console.warn('Telegram notify failed', err)
+  }
+}
+
 function FormApp() {
   const access = useAccess()
   const { hasRestored, pendingRows, savedAt, saveDraft, clearDraft, restoreDraftRows, discardPendingRestore } = useDraftStorage(access)
@@ -270,11 +294,20 @@ function FormApp() {
          return
        }
 
-       await insertSubmission(payload, {
+       const inserted = await insertSubmission(payload, {
          pcCode: access.pcCode,
          pcName: access.pcName,
          reportYear: access.period.year,
          reportMonth: access.period.month,
+       })
+
+       void notifyTelegramSubmission({
+         pcCode: access.pcCode,
+         pcName: access.pcName,
+         reportMonth: access.period.month,
+         reportYear: access.period.year,
+         rowCount: payload.rows.length,
+         submissionId: inserted.submissionId,
        })
 
        alert('Gửi báo cáo thành công!')

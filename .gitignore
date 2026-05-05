@@ -34,4 +34,10 @@ pnpm-debug.log*
 # TypeScript
 *.tsbuildinfo
 
+# Supabase
+supabase/.temp/
+supabase/functions/.env
+
+# VSCode (optional)
+.vscode/
 

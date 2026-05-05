@@ -322,7 +322,10 @@ export async function insertSubmission(
   if (mapped.length === 0) {
     throw new Error('Inserted submission could not be parsed into canonical format')
   }
-  return mapped
+  return {
+    submissionId: (data as SubmissionRow).id,
+    entries: mapped,
+  }
 }
 
 export async function listFormKeys(): Promise<FormKeyRow[]> {
