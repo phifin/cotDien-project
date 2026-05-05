@@ -3,6 +3,28 @@ import useSWR from 'swr'
 import { Copy, Plus, KeyRound, RefreshCw } from 'lucide-react'
 import { createFormKey, listFormKeys, listPcs, setFormKeyActive, type FormKeyRow, type PcRow } from '@repo/supabase/queries'
 
+function buildFormAppUrl(token: string): string {
+  const url = new URL(window.location.href)
+  url.search = ''
+  url.hash = ''
+
+  if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+    if (url.port === '5174') url.port = '5173'
+    url.pathname = '/'
+  } else {
+    const dashboardBase = import.meta.env.BASE_URL.endsWith('/')
+      ? import.meta.env.BASE_URL
+      : `${import.meta.env.BASE_URL}/`
+    const formBase = dashboardBase.includes('/dashboard-app/')
+      ? dashboardBase.replace('/dashboard-app/', '/form-app/')
+      : `${dashboardBase.replace(/\/$/, '')}/form-app/`
+    url.pathname = formBase
+  }
+
+  url.searchParams.set('key', token)
+  return url.toString()
+}
+
 export function KeyManagerView({ onBack }: { onBack: () => void }) {
   const [pcCode, setPcCode] = useState('')
   const [month, setMonth] = useState(new Date().getMonth() + 1)
@@ -66,8 +88,7 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
   }
 
   const copyRef = (token: string) => {
-    const url = `${window.location.origin.replace('5174', '5173')}/?key=${encodeURIComponent(token)}`
-    void navigator.clipboard.writeText(url)
+    void navigator.clipboard.writeText(buildFormAppUrl(token))
     alert('Đã copy đường dẫn Form App!')
   }
 

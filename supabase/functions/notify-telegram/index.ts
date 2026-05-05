@@ -2,10 +2,24 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Content-Type": "application/json",
+};
+
 serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   try {
     if (req.method !== "POST") {
-      return new Response("Method not allowed", { status: 405 });
+      return new Response(
+        JSON.stringify({ error: "Method not allowed" }),
+        { status: 405, headers: corsHeaders },
+      );
     }
 
     const body = await req.json();
@@ -26,7 +40,7 @@ serve(async (req) => {
     if (!BOT_TOKEN || !CHAT_ID) {
       return new Response(
         JSON.stringify({ error: "Missing Telegram config" }),
-        { status: 500 }
+        { status: 500, headers: corsHeaders },
       );
     }
 
@@ -59,22 +73,17 @@ ${DASHBOARD_URL ?? ""}
     const telegramData = await telegramRes.json();
 
     return new Response(JSON.stringify(telegramData), {
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-      },
+      status: 200,
+      headers: corsHeaders,
     });
   } catch (err) {
     return new Response(
       JSON.stringify({
-        error: err.message,
+        error: err instanceof Error ? err.message : "Unknown error",
       }),
       {
         status: 500,
-        headers: {
-          "Content-Type": "application/json",
-          "Access-Control-Allow-Origin": "*",
-        },
+        headers: corsHeaders,
       }
     );
   }
