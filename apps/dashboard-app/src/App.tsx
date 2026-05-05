@@ -18,13 +18,22 @@ const fetcher = async ({ y, m }: { y: number, m: number }) => {
 }
 type PipelineData = Awaited<ReturnType<typeof fetcher>>
 
+function getCurrentPeriod() {
+  const now = new Date()
+  return { year: now.getFullYear(), month: now.getMonth() + 1 }
+}
+
 export default function App() {
-  const [period, setPeriod] = useState({ year: 2026, month: 4 })
+  const [period, setPeriod] = useState(getCurrentPeriod)
   const [activeView, setActiveView] = useState<'table' | 'compare' | 'keys'>('table')
   
   const [filterState, setFilterState] = useState<FilterState>({})
   const [showFilterModal, setShowFilterModal] = useState(false)
   const [showStatsModal, setShowStatsModal] = useState(false)
+  const yearOptions = useMemo(() => {
+    const currentYear = getCurrentPeriod().year
+    return Array.from({ length: 5 }, (_, index) => currentYear - 2 + index)
+  }, [])
 
   // Automatic SWR deduplication and revalidation on focus
   const { data: pipelineData, error, isLoading, isValidating, mutate } = useSWR<PipelineData, Error>({ y: period.year, m: period.month }, fetcher, {
@@ -51,25 +60,6 @@ export default function App() {
   }, [filteredDataset])
 
   const isFiltered = Object.keys(sanitizeFilterState(filterState)).length > 0
-  const debugSummary = useMemo(() => {
-    const fetchedCount = pipelineData?.debug.fetchedCount ?? 0
-    const latestPerPcCount = pipelineData?.debug.latestPerPcCount ?? 0
-    const parsedCount = pipelineData?.debug.parsedCount ?? 0
-    const mergedRowCount = pipelineData?.merged.entries.length ?? 0
-    const tableRowCount = filteredDataset?.entries.length ?? 0
-
-    return {
-      fetchedCount,
-      latestPerPcCount,
-      parsedCount,
-      mergedRowCount,
-      tableRowCount,
-      sampleRaw: pipelineData?.debug.sampleRaw ?? null,
-      sampleParsed: pipelineData?.debug.sampleParsed ?? null,
-      skipReasons: pipelineData?.debug.skipReasons ?? [],
-    }
-  }, [pipelineData, filteredDataset])
-
   if (activeView === 'compare') {
     return <CompareView onBack={() => { setActiveView('table'); }} />
   }
@@ -108,7 +98,7 @@ export default function App() {
             onChange={e => { setPeriod({...period, year: Number(e.target.value)}); }}
             className="bg-slate-800 border border-slate-700 text-white text-sm h-9 rounded px-3 font-medium outline-none focus:border-blue-500 transition-colors"
           >
-            {[2024,2025,2026].map(y => <option key={y} value={y}>Năm {y}</option>)}
+            {yearOptions.map(y => <option key={y} value={y}>Năm {y}</option>)}
           </select>
         </div>
       </header>
@@ -149,30 +139,6 @@ export default function App() {
       </div>
 
       <main className="flex-1 overflow-hidden p-6 relative">
-        {import.meta.env.DEV && (
-          <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 space-y-1">
-            <div className="font-semibold">Dev Pipeline Debug</div>
-            <div>Fetched submissions: {debugSummary.fetchedCount}</div>
-            <div>Latest-per-PC submissions: {debugSummary.latestPerPcCount}</div>
-            <div>Parsed submissions: {debugSummary.parsedCount}</div>
-            <div>Merged dataset rows: {debugSummary.mergedRowCount}</div>
-            <div>Final table rows: {debugSummary.tableRowCount}</div>
-            {debugSummary.skipReasons.length > 0 && (
-              <div>Skipped invalid payloads: {debugSummary.skipReasons.length}</div>
-            )}
-            {debugSummary.sampleRaw && (
-              <div className="break-all">
-                Sample raw payload: {JSON.stringify(debugSummary.sampleRaw)}
-              </div>
-            )}
-            {debugSummary.sampleParsed && (
-              <div className="break-all">
-                Sample parsed row: {JSON.stringify(debugSummary.sampleParsed.data)}
-              </div>
-            )}
-          </div>
-        )}
-
         {error && (
           <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             Không tải được dữ liệu dashboard: {error instanceof Error ? error.message : 'Unknown error'}

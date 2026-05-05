@@ -1,7 +1,7 @@
 import type { ZodError } from 'zod'
 import { ok, err, type Result } from '../types/index.js'
-import { MonthlyReportPayloadSchema } from './schema.js'
-import type { MonthlyReportPayload, PcIdentity, ReportPeriod } from './types.js'
+import { MonthlyReportPayloadSchema, SubmissionPayloadSchema } from './schema.js'
+import type { MonthlyReportPayload, PcIdentity, ReportPeriod, SubmissionPayload } from './types.js'
 
 function coerceNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -29,6 +29,14 @@ function coerceYearMap(value: unknown): Record<string, number> {
  */
 export function parseImportedJson(input: unknown): Result<MonthlyReportPayload, ZodError> {
   const parsed = MonthlyReportPayloadSchema.safeParse(input)
+  if (parsed.success) {
+    return ok(parsed.data)
+  }
+  return err<ZodError>(parsed.error)
+}
+
+export function parseSubmissionPayload(input: unknown): Result<SubmissionPayload, ZodError> {
+  const parsed = SubmissionPayloadSchema.safeParse(input)
   if (parsed.success) {
     return ok(parsed.data)
   }

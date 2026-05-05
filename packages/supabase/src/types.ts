@@ -1,4 +1,6 @@
-import type { MonthlyReportPayload } from '@repo/shared/domain'
+import type { MonthlyReportPayload, SubmissionPayload } from '@repo/shared/domain'
+
+type SubmissionPayloadColumn = SubmissionPayload | MonthlyReportPayload | Record<string, unknown>
 
 /**
  * Manually crafted strict typings reflecting your DB migration state
@@ -15,7 +17,7 @@ export interface Database {
           report_month: number
           pc_code: string
           pc_name: string
-          payload: MonthlyReportPayload | Record<string, unknown>
+          payload: SubmissionPayloadColumn
           status: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
         Insert: {
@@ -25,7 +27,7 @@ export interface Database {
           report_month: number
           pc_code: string
           pc_name: string
-          payload: MonthlyReportPayload | Record<string, unknown>
+          payload: SubmissionPayloadColumn
           status?: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
         Update: {
@@ -33,7 +35,7 @@ export interface Database {
           report_month?: number
           pc_code?: string
           pc_name?: string
-          payload?: MonthlyReportPayload | Record<string, unknown>
+          payload?: SubmissionPayloadColumn
           status?: 'DRAFT' | 'SUBMITTED' | 'APPROVED'
         }
         Relationships: []

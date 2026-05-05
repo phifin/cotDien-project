@@ -34,12 +34,14 @@ function InputToast({ message }: { message: string | null }) {
     <div
       role="status"
       aria-live="polite"
-      className="fixed bottom-8 right-8 z-50 px-5 py-3.5 rounded-xl bg-slate-900 text-white text-[15px] leading-snug font-medium shadow-[0_8px_24px_rgba(0,0,0,0.22)] pointer-events-none animate-fade-in max-w-sm"
+      className="fixed bottom-6 right-6 z-[9999] max-w-[min(28rem,calc(100vw-3rem))] rounded-xl bg-slate-950 px-6 py-4 text-base font-semibold leading-snug text-white shadow-[0_18px_50px_rgba(15,23,42,0.42)] ring-1 ring-white/10 pointer-events-none animate-fade-in"
     >
       {message}
     </div>
   )
 }
+
+const PARTNER_PATH = 'general.doi_tac'
 
 export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTableProps) {
   const targetYears = useMemo(() => [period.year - 1, period.year], [period.year])
@@ -119,6 +121,15 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
     onChange(next)
   }
 
+  const handlePartnerChange = (rowIndex: number, value: string) => {
+    const isDuplicate = rows.some((row, index) => index !== rowIndex && row[PARTNER_PATH] === value)
+    if (isDuplicate) {
+      flashHint(`Đối tác ${value} đã có trong bảng. Mỗi đối tác chỉ được nhập một dòng.`)
+      return
+    }
+    updateCell(rowIndex, PARTNER_PATH, value)
+  }
+
   const handleNumericChange = (rowIndex: number, path: string, raw: string) => {
     if (isDecimalNumericPath(path)) {
       const { value, hadInvalid } = sanitizeDecimalInput(raw)
@@ -148,6 +159,10 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
   const duplicateRow = (index: number) => {
     const next = [...rows]
     const clone = { ...next[index] }
+    if (clone[PARTNER_PATH]) {
+      clone[PARTNER_PATH] = ''
+      flashHint('Dòng nhân bản đã bỏ trống đối tác để tránh trùng. Vui lòng chọn đối tác khác.')
+    }
     next.splice(index + 1, 0, clone)
     onChange(next)
   }
@@ -165,29 +180,26 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
   return (
     <>
       <InputToast message={inputHint} />
-      <div className="flex flex-col h-full min-h-0 gap-1.5">
-        {/* Scroll controls — rendered above the card, never inside overflow */}
-        <div className="flex justify-end px-0.5">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => { scrollByAmount(-1) }}
-              className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-sm transition-colors"
-              title="Cuộn trái"
-              aria-label="Cuộn bảng sang trái"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => { scrollByAmount(1) }}
-              className="inline-flex items-center justify-center h-7 w-7 rounded-md bg-white border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50 shadow-sm transition-colors"
-              title="Cuộn phải"
-              aria-label="Cuộn bảng sang phải"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+      <div className="relative flex h-full min-h-0 flex-col pt-10">
+        <div className="pointer-events-none absolute right-0 top-0 z-40 flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => { scrollByAmount(-1) }}
+            className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-md transition-colors hover:bg-slate-50 hover:text-slate-900"
+            title="Cuộn trái"
+            aria-label="Cuộn bảng sang trái"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => { scrollByAmount(1) }}
+            className="pointer-events-auto inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-600 shadow-md transition-colors hover:bg-slate-50 hover:text-slate-900"
+            title="Cuộn phải"
+            aria-label="Cuộn bảng sang phải"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
         </div>
         <div className="flex flex-col flex-1 min-h-0 bg-white border border-slate-200 shadow-sm rounded-lg overflow-hidden">
         <div
@@ -255,7 +267,13 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
                       {col.inputType === 'select' ? (
                         <select
                           value={row[col.path] || ''}
-                          onChange={(e) => { updateCell(rIndex, col.path, e.target.value) }}
+                          onChange={(e) => {
+                            if (col.path === PARTNER_PATH) {
+                              handlePartnerChange(rIndex, e.target.value)
+                              return
+                            }
+                            updateCell(rIndex, col.path, e.target.value)
+                          }}
                           disabled={col.isReadOnly}
                           title={getPartnerFullNameByCode(row[col.path]) ?? ''}
                           className={cn(

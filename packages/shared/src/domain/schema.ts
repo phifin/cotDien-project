@@ -67,3 +67,14 @@ export const MonthlyReportPayloadSchema = z.object({
   revenue_result: RevenueResultSchema,
   pole_quantities: PoleQuantitiesSchema,
 })
+
+export const SubmissionPayloadSchema = z.object({
+  form_metadata: z.object({
+    pc_code: z.string(),
+    pc_name: z.string(),
+    report_month: z.number().int().min(1).max(12),
+    report_year: z.number().int().min(2000).max(2100),
+    doanh_thu_ke_hoach_nam: z.number(),
+  }),
+  rows: z.array(MonthlyReportPayloadSchema),
+})

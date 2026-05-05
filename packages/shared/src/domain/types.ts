@@ -10,6 +10,7 @@ import type {
   RevenueResultSchema,
   PoleQuantitiesSchema,
   MonthlyReportPayloadSchema,
+  SubmissionPayloadSchema,
 } from './schema.js'
 
 // Automatically infer all types from the Zod Schemas to keep a single source of truth.
@@ -25,6 +26,7 @@ export type RevenueResult = z.infer<typeof RevenueResultSchema>
 export type PoleQuantities = z.infer<typeof PoleQuantitiesSchema>
 
 export type MonthlyReportPayload = z.infer<typeof MonthlyReportPayloadSchema>
+export type SubmissionPayload = z.infer<typeof SubmissionPayloadSchema>
 export function buildReportId(pcCode: string, year: number, month: number): string {
   const paddedMonth = month.toString().padStart(2, '0')
   return `REPORT_${pcCode}_${String(year)}_${paddedMonth}`

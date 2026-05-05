@@ -1,5 +1,11 @@
 import { getSupabaseBrowserClient } from './client.js'
-import { parseImportedJson, type MonthlyReportPayload, type ParsedSubmissionEntry } from '@repo/shared/domain'
+import {
+  parseImportedJson,
+  parseSubmissionPayload,
+  type MonthlyReportPayload,
+  type ParsedSubmissionEntry,
+  type SubmissionPayload,
+} from '@repo/shared/domain'
 import type { Database } from './types.js'
 
 type SubmissionRow = Database['public']['Tables']['submissions']['Row']
@@ -80,28 +86,22 @@ function getRowPcName(row: SubmissionRow): string {
   return row.pc_code
 }
 
+function isNewerSubmission(current: SubmissionRow, existing: SubmissionRow): boolean {
+  const currentTime = Date.parse(current.created_at)
+  const existingTime = Date.parse(existing.created_at)
+  if (Number.isFinite(currentTime) && Number.isFinite(existingTime)) {
+    return currentTime > existingTime || (currentTime === existingTime && current.id > existing.id)
+  }
+
+  return current.created_at > existing.created_at || (current.created_at === existing.created_at && current.id > existing.id)
+}
+
 function pickLatestRowsPerPc(rows: SubmissionRow[]): SubmissionRow[] {
   const latestByPc = new Map<string, SubmissionRow>()
 
   for (const row of rows) {
     const existing = latestByPc.get(row.pc_code)
-    if (!existing) {
-      latestByPc.set(row.pc_code, row)
-      continue
-    }
-
-    const currentTime = Date.parse(row.created_at)
-    const existingTime = Date.parse(existing.created_at)
-    if (Number.isFinite(currentTime) && Number.isFinite(existingTime)) {
-      if (currentTime > existingTime) {
-        latestByPc.set(row.pc_code, row)
-      } else if (currentTime === existingTime && row.id > existing.id) {
-        latestByPc.set(row.pc_code, row)
-      }
-      continue
-    }
-
-    if (row.created_at > existing.created_at || (row.created_at === existing.created_at && row.id > existing.id)) {
+    if (!existing || isNewerSubmission(row, existing)) {
       latestByPc.set(row.pc_code, row)
     }
   }
@@ -109,8 +109,8 @@ function pickLatestRowsPerPc(rows: SubmissionRow[]): SubmissionRow[] {
   return Array.from(latestByPc.values())
 }
 
-function normalizeLegacyPayload(row: SubmissionRow): MonthlyReportPayload {
-  const payload = asRecord(row.payload) ?? {}
+function normalizeLegacyPayload(row: SubmissionRow, rawPayload: unknown = row.payload): MonthlyReportPayload {
+  const payload = asRecord(rawPayload) ?? {}
   const general = asRecord(payload.general) ?? {}
   const contract = asRecord(payload.contract) ?? {}
   const execution = asRecord(payload.execution) ?? {}
@@ -160,17 +160,10 @@ function normalizeLegacyPayload(row: SubmissionRow): MonthlyReportPayload {
   }
 }
 
-function mapRowToParsedEntry(row: SubmissionRow): ParsedSubmissionEntry | null {
-  const canonicalAttempt = parseImportedJson(row.payload)
-  const canonicalPayload = canonicalAttempt.ok
-    ? canonicalAttempt.data
-    : normalizeLegacyPayload(row)
-  const validated = parseImportedJson(canonicalPayload)
-  if (!validated.ok) return null
-
+function buildEntry(row: SubmissionRow, data: MonthlyReportPayload, rowIndex: number): ParsedSubmissionEntry {
   return {
     meta: {
-      id: row.id,
+      id: `${row.id}:${String(rowIndex + 1)}`,
       submittedAt: row.created_at,
       pcCode: row.pc_code,
       pcName: getRowPcName(row),
@@ -178,8 +171,32 @@ function mapRowToParsedEntry(row: SubmissionRow): ParsedSubmissionEntry | null {
       reportMonth: getRowPeriodMonth(row),
       status: 'SUBMITTED', // Or default if missing in DB schema
     },
-    data: validated.data,
+    data,
   }
+}
+
+function parsePayloadRow(row: SubmissionRow, payloadRow: unknown): MonthlyReportPayload | null {
+  const canonicalAttempt = parseImportedJson(payloadRow)
+  const canonicalPayload = canonicalAttempt.ok
+    ? canonicalAttempt.data
+    : normalizeLegacyPayload(row, payloadRow)
+  const validated = parseImportedJson(canonicalPayload)
+  return validated.ok ? validated.data : null
+}
+
+function mapSubmissionToParsedEntries(row: SubmissionRow): ParsedSubmissionEntry[] {
+  const formPayload = parseSubmissionPayload(row.payload)
+  const payloadRows: unknown[] = formPayload.ok ? formPayload.data.rows : [row.payload]
+  const entries: ParsedSubmissionEntry[] = []
+
+  payloadRows.forEach((payloadRow, rowIndex) => {
+    const parsed = parsePayloadRow(row, payloadRow)
+    if (parsed) {
+      entries.push(buildEntry(row, parsed, rowIndex))
+    }
+  })
+
+  return entries
 }
 
 /**
@@ -212,14 +229,16 @@ export async function fetchSubmissionsByPeriodWithDebug(
   const latestRows = pickLatestRowsPerPc(rows)
   const entries: ParsedSubmissionEntry[] = []
   const skipReasons: string[] = []
+  let skippedCount = 0
 
   for (const row of latestRows) {
-    const mapped = mapRowToParsedEntry(row)
-    if (!mapped) {
+    const mapped = mapSubmissionToParsedEntries(row)
+    if (mapped.length === 0) {
+      skippedCount += 1
       skipReasons.push(`Invalid payload skipped for submission id=${row.id}`)
       continue
     }
-    entries.push(mapped)
+    entries.push(...mapped)
   }
 
   return {
@@ -228,8 +247,8 @@ export async function fetchSubmissionsByPeriodWithDebug(
       fetchedCount: rows.length,
       latestPerPcCount: latestRows.length,
       parsedCount: entries.length,
-      skippedCount: latestRows.length - entries.length,
-      sampleRaw: includeDebugPayloads ? rows[0]?.payload ?? null : null,
+      skippedCount,
+      sampleRaw: includeDebugPayloads ? latestRows[0]?.payload ?? null : null,
       sampleParsed: includeDebugPayloads ? entries[0] ?? null : null,
       skipReasons: includeDebugPayloads ? skipReasons : [],
     },
@@ -270,19 +289,17 @@ export async function fetchSubmissionsForCompare(
 
   return {
     monthA: latestA
-      .map(mapRowToParsedEntry)
-      .filter((entry): entry is ParsedSubmissionEntry => Boolean(entry)),
+      .flatMap(mapSubmissionToParsedEntries),
     monthB: latestB
-      .map(mapRowToParsedEntry)
-      .filter((entry): entry is ParsedSubmissionEntry => Boolean(entry)),
+      .flatMap(mapSubmissionToParsedEntries),
   }
 }
 
 /**
- * Pushes exactly one Canonical Payload object into the DB flat row mapping.
+ * Pushes exactly one full monthly form payload into the append-only submissions table.
  */
 export async function insertSubmission(
-  payload: MonthlyReportPayload,
+  payload: SubmissionPayload,
   metadata: { pcCode: string; pcName: string; reportYear: number; reportMonth: number },
 ) {
   const supabase = getSupabaseBrowserClient()
@@ -301,8 +318,8 @@ export async function insertSubmission(
     .single()
 
   if (error) throw error
-  const mapped = mapRowToParsedEntry(data as SubmissionRow)
-  if (!mapped) {
+  const mapped = mapSubmissionToParsedEntries(data as SubmissionRow)
+  if (mapped.length === 0) {
     throw new Error('Inserted submission could not be parsed into canonical format')
   }
   return mapped

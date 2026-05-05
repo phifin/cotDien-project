@@ -10,9 +10,11 @@ import {
   normalizeSubmissionPayload,
   buildCsvExportData,
   parseImportedJson,
+  parseSubmissionPayload,
   validateImportedJsonAgainstContext,
   hydrateFormFromCanonical,
   type MonthlyReportPayload,
+  type SubmissionPayload,
   resolveYearlyPlannedRevenue,
 } from '@repo/shared/domain'
 import { insertSubmission } from '@repo/supabase/queries'
@@ -72,17 +74,71 @@ function canonicalToFlatRow(payload: MonthlyReportPayload, targetYears: number[]
   return row
 }
 
+const CONTEXT_DERIVED_ROW_FIELDS = new Set([
+  'general.ten_pc',
+  'general.doanh_thu_ke_hoach_nam',
+])
+
+function hasUserEnteredData(row: Record<string, string>): boolean {
+  return Object.entries(row).some(([key, value]) => {
+    if (CONTEXT_DERIVED_ROW_FIELDS.has(key)) return false
+    return value.trim() !== ''
+  })
+}
+
 function canonicalizeRows(
   rows: Array<Record<string, string>>,
   access: ReturnType<typeof useAccess>,
 ): MonthlyReportPayload[] {
   return rows
-    .filter((r) => Object.keys(r).length > 0 && Object.values(r).some((v) => v.trim() !== ''))
+    .filter(hasUserEnteredData)
     .map((raw) => normalizeSubmissionPayload(
       unflattenRow(raw),
       { pcCode: access.pcCode, pcName: access.pcName },
       { year: access.period.year, month: access.period.month },
     ))
+}
+
+function findDuplicatePartner(rows: MonthlyReportPayload[]): string | null {
+  const seen = new Set<string>()
+  for (const row of rows) {
+    const partner = row.general.doi_tac.trim()
+    if (!partner) continue
+    if (seen.has(partner)) return partner
+    seen.add(partner)
+  }
+  return null
+}
+
+function buildSubmissionPayload(
+  rows: Array<Record<string, string>>,
+  access: ReturnType<typeof useAccess>,
+  yearlyPlannedRevenue: number | null,
+): SubmissionPayload {
+  return {
+    form_metadata: {
+      pc_code: access.pcCode,
+      pc_name: access.pcName,
+      report_month: access.period.month,
+      report_year: access.period.year,
+      doanh_thu_ke_hoach_nam: yearlyPlannedRevenue ?? 0,
+    },
+    rows: canonicalizeRows(rows, access),
+  }
+}
+
+function getImportItems(data: unknown): unknown[] {
+  const formPayload = parseSubmissionPayload(data)
+  if (formPayload.ok) return formPayload.data.rows
+
+  const dataRecord = (data && typeof data === 'object' && !Array.isArray(data))
+    ? (data as { rows?: unknown; submissions?: unknown })
+    : null
+
+  if (Array.isArray(dataRecord?.rows)) return dataRecord.rows
+  if (Array.isArray(dataRecord?.submissions)) return dataRecord.submissions
+  if (Array.isArray(data)) return data
+  return data ? [data] : []
 }
 
 function downloadFile(content: string, fileName: string, mimeType: string): void {
@@ -165,10 +221,10 @@ function FormApp() {
   // Action: Tải CSV
   const handleExportCsv = () => {
     try {
-      const canonicalPayloads = canonicalizeRows(rows, access)
-      if (canonicalPayloads.length === 0) return
+      const payload = buildSubmissionPayload(rows, access, yearlyPlannedRevenue)
+      if (payload.rows.length === 0) return
 
-      const flatRecords = buildCsvExportData(canonicalPayloads, targetYears)
+      const flatRecords = buildCsvExportData(payload.rows, targetYears)
       const csvContent = toCsv(flatRecords)
       downloadFile(
         csvContent,
@@ -182,18 +238,8 @@ function FormApp() {
 
   const handleExportJson = () => {
     try {
-      const canonicalPayloads = canonicalizeRows(rows, access)
-      if (canonicalPayloads.length === 0) return
-
-      const payload = {
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        context: {
-          pcCode: access.pcCode,
-          period: access.period,
-        },
-        submissions: canonicalPayloads,
-      }
+      const payload = buildSubmissionPayload(rows, access, yearlyPlannedRevenue)
+      if (payload.rows.length === 0) return
 
       downloadFile(
         JSON.stringify(payload, null, 2),
@@ -213,15 +259,23 @@ function FormApp() {
     setSuccessMsg(null)
 
     try {
-       const payloads = canonicalizeRows(rows, access)
-       const promises = payloads.map((payload) => insertSubmission(payload, {
+       const payload = buildSubmissionPayload(rows, access, yearlyPlannedRevenue)
+       if (payload.rows.length === 0) {
+         setErrorMsg('Chưa có dòng dữ liệu nào để gửi.')
+         return
+       }
+       const duplicatePartner = findDuplicatePartner(payload.rows)
+       if (duplicatePartner) {
+         setErrorMsg(`Đối tác ${duplicatePartner} bị trùng. Mỗi đối tác chỉ được gửi một dòng.`)
+         return
+       }
+
+       await insertSubmission(payload, {
          pcCode: access.pcCode,
          pcName: access.pcName,
          reportYear: access.period.year,
          reportMonth: access.period.month,
-       }))
-
-       await Promise.all(promises)
+       })
 
        alert('Gửi báo cáo thành công!')
        setSuccessMsg('Đã gửi báo cáo thành công và xóa nháp cục bộ.')
@@ -250,16 +304,7 @@ function FormApp() {
          }
 
          const data: unknown = JSON.parse(rawResult)
-         const dataRecord = (data && typeof data === 'object' && !Array.isArray(data))
-           ? (data as { submissions?: unknown })
-           : null
-         const importItems: unknown[] = Array.isArray(data)
-           ? data
-           : Array.isArray(dataRecord?.submissions)
-           ? dataRecord.submissions
-           : data
-           ? [data]
-           : []
+         const importItems = getImportItems(data)
 
          if (importItems.length === 0) {
            alert('Không có dữ liệu hợp lệ trong file JSON.')
@@ -267,6 +312,7 @@ function FormApp() {
          }
 
          const importedRows: Array<Record<string, string>> = []
+         const importedPartners = new Set<string>()
 
          for (const item of importItems) {
            const parsed = parseImportedJson(item)
@@ -288,6 +334,12 @@ function FormApp() {
            }
 
            const hydrated = hydrateFormFromCanonical(parsed.data)
+           const partner = hydrated.general.doi_tac.trim()
+           if (partner && importedPartners.has(partner)) {
+             alert(`File import có đối tác bị trùng: ${partner}. Mỗi đối tác chỉ được nhập một dòng.`)
+             return
+           }
+           if (partner) importedPartners.add(partner)
            importedRows.push(canonicalToFlatRow(hydrated, targetYears))
          }
 
