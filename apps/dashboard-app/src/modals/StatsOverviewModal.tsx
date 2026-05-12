@@ -1,4 +1,10 @@
-import type { DashboardStats } from '@repo/shared/domain'
+import {
+  PARTNER_CATEGORY_CODES,
+  PARTNER_CATEGORY_LABELS,
+  type DashboardStats,
+  type DebtAgingBuckets,
+  type DebtBreakdown,
+} from '@repo/shared/domain'
 import { X } from 'lucide-react'
 
 function money(value: number): string {
@@ -12,36 +18,58 @@ function pct(value: number): string {
 function AgingBucketRows({
   buckets,
 }: {
-  buckets: {
-    duoi_6_thang: number
-    tu_6_den_duoi_12_thang: number
-    tu_12_den_duoi_24_thang: number
-    tu_24_den_duoi_36_thang: number
-    tren_36_thang: number
-  }
+  buckets: DebtAgingBuckets
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+      <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
+        <span className="text-slate-600">Trong hạn</span>
+        <span className="font-mono">{money(buckets.trong_han)}</span>
+      </div>
       <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
         <span className="text-slate-600">Dưới 6 tháng</span>
         <span className="font-mono">{money(buckets.duoi_6_thang)}</span>
       </div>
       <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
-        <span className="text-slate-600">6 đến dưới 12 tháng</span>
+        <span className="text-slate-600">Từ 6 tháng đến dưới 12 tháng</span>
         <span className="font-mono">{money(buckets.tu_6_den_duoi_12_thang)}</span>
       </div>
       <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
-        <span className="text-slate-600">12 đến dưới 24 tháng</span>
+        <span className="text-slate-600">Từ 12 tháng đến dưới 24 tháng</span>
         <span className="font-mono">{money(buckets.tu_12_den_duoi_24_thang)}</span>
       </div>
       <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
-        <span className="text-slate-600">24 đến dưới 36 tháng</span>
+        <span className="text-slate-600">Từ 24 tháng đến dưới 36 tháng</span>
         <span className="font-mono">{money(buckets.tu_24_den_duoi_36_thang)}</span>
       </div>
-      <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white md:col-span-2">
+      <div className="flex items-center justify-between border border-slate-200 rounded p-2 bg-white">
         <span className="text-slate-600">Trên 36 tháng</span>
         <span className="font-mono">{money(buckets.tren_36_thang)}</span>
       </div>
+    </div>
+  )
+}
+
+function DebtBreakdownRows({ breakdown }: { breakdown: DebtBreakdown }) {
+  const rows = [
+    ['Tổng công nợ toàn TCT', breakdown.totalDebt],
+    ['Tổng nợ tồn năm 2023 đến kỳ báo cáo', breakdown.debt2023],
+    ['Tổng nợ tồn năm 2024 đến kỳ báo cáo', breakdown.debt2024],
+    ['Tổng nợ tồn năm 2025 đến kỳ báo cáo', breakdown.debt2025],
+    ['Tổng nợ phải thu năm 2026 đến kỳ báo cáo', breakdown.debt2026],
+  ] as const
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+      {rows.map(([label, value], index) => (
+        <div
+          key={label}
+          className={`flex items-center justify-between border border-slate-200 rounded p-2 bg-white ${index === 0 ? 'md:col-span-2' : ''}`}
+        >
+          <span className="text-slate-600">{label}</span>
+          <span className="font-mono">{money(value)}</span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -89,6 +117,18 @@ export function StatsOverviewModal({ stats, onClose }: { stats: DashboardStats, 
               </div>
             </div>
 
+            <div>
+              <div className="text-sm font-medium text-slate-700 mb-2">Thu trong kỳ theo nhóm đối tác</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {PARTNER_CATEGORY_CODES.map((category) => (
+                  <div key={category} className="border border-slate-200 rounded p-3 bg-slate-50">
+                    <div className="text-xs font-semibold text-slate-500">{PARTNER_CATEGORY_LABELS[category]}</div>
+                    <div className="text-sm font-mono text-slate-900 mt-1">{money(stats.revenue.actualByCategory[category])}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="border border-slate-200 rounded p-3">
                 <div className="text-sm text-slate-600">Tỷ lệ thực hiện (thực tế / kế hoạch)</div>
@@ -105,7 +145,7 @@ export function StatsOverviewModal({ stats, onClose }: { stats: DashboardStats, 
                 <div className="text-base font-mono mt-1">{stats.poles.buckets.duoi_8_5m.toLocaleString()}</div>
               </div>
               <div className="border border-slate-200 rounded p-3">
-                <div className="text-xs text-slate-500">Từ 8.5m đến dưới 10.5m</div>
+                <div className="text-xs text-slate-500">Từ 8.5m - dưới 10.5m</div>
                 <div className="text-base font-mono mt-1">{stats.poles.buckets.tu_8_5_den_10_5m.toLocaleString()}</div>
               </div>
               <div className="border border-slate-200 rounded p-3">
@@ -113,22 +153,44 @@ export function StatsOverviewModal({ stats, onClose }: { stats: DashboardStats, 
                 <div className="text-base font-mono mt-1">{stats.poles.buckets.tu_10_5_den_12_5m.toLocaleString()}</div>
               </div>
               <div className="border border-slate-200 rounded p-3">
-                <div className="text-xs text-slate-500">Trên 12.5m</div>
+                <div className="text-xs text-slate-500">Từ 12.5m trở lên</div>
                 <div className="text-base font-mono mt-1">{stats.poles.buckets.tren_12_5m.toLocaleString()}</div>
+              </div>
+            </div>
+            <div>
+              <div className="text-sm font-medium text-slate-700 mb-2">Số lượng cột theo nhóm đối tác</div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {PARTNER_CATEGORY_CODES.map((category) => (
+                  <div key={category} className="border border-slate-200 rounded p-3 bg-slate-50">
+                    <div className="text-xs font-semibold text-slate-500">{PARTNER_CATEGORY_LABELS[category]}</div>
+                    <div className="text-base font-mono mt-1">{stats.poles.byCategory[category].total.toLocaleString()}</div>
+                  </div>
+                ))}
               </div>
             </div>
           </section>
 
           <section className="bg-white border border-slate-200 rounded-lg p-5 space-y-4">
             <h3 className="text-sm font-semibold text-slate-800 uppercase tracking-wider">3. Tổng công nợ EVNSPC</h3>
-            <div className="border border-slate-200 rounded p-3">
-              <div className="text-sm text-slate-600">Tổng công nợ</div>
-              <div className="text-xl font-bold font-mono text-slate-900 mt-1">{money(stats.debt.total)}</div>
+            <div>
+              <DebtBreakdownRows breakdown={stats.debt.breakdown} />
             </div>
 
             <div>
               <div className="text-sm font-medium text-slate-700 mb-2">Cơ cấu tuổi nợ</div>
               <AgingBucketRows buckets={stats.debt.agingBuckets} />
+            </div>
+
+            <div>
+              <div className="text-sm font-medium text-slate-700 mb-2">Công nợ theo nhóm đối tác</div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                {PARTNER_CATEGORY_CODES.map((category) => (
+                  <div key={category} className="border border-slate-200 rounded p-3 bg-slate-50">
+                    <div className="text-xs font-semibold text-slate-500 mb-2">{PARTNER_CATEGORY_LABELS[category]}</div>
+                    <DebtBreakdownRows breakdown={stats.debt.byCategory[category]} />
+                  </div>
+                ))}
+              </div>
             </div>
           </section>
 
@@ -147,6 +209,7 @@ export function StatsOverviewModal({ stats, onClose }: { stats: DashboardStats, 
                   <div className="text-base font-mono mt-1">{money(stats.difficultPartners.VTVCAB.totalDebt)}</div>
                 </div>
               </div>
+              <DebtBreakdownRows breakdown={stats.difficultPartners.VTVCAB.debtBreakdown} />
               <AgingBucketRows buckets={stats.difficultPartners.VTVCAB.agingBuckets} />
             </div>
 
@@ -162,6 +225,7 @@ export function StatsOverviewModal({ stats, onClose }: { stats: DashboardStats, 
                   <div className="text-base font-mono mt-1">{money(stats.difficultPartners.SCTV.totalDebt)}</div>
                 </div>
               </div>
+              <DebtBreakdownRows breakdown={stats.difficultPartners.SCTV.debtBreakdown} />
               <AgingBucketRows buckets={stats.difficultPartners.SCTV.agingBuckets} />
             </div>
           </section>

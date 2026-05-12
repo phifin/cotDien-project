@@ -41,8 +41,6 @@ function InputToast({ message }: { message: string | null }) {
   )
 }
 
-const PARTNER_PATH = 'general.doi_tac'
-
 export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTableProps) {
   const targetYears = useMemo(() => [period.year - 1, period.year], [period.year])
 
@@ -121,15 +119,6 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
     onChange(next)
   }
 
-  const handlePartnerChange = (rowIndex: number, value: string) => {
-    const isDuplicate = rows.some((row, index) => index !== rowIndex && row[PARTNER_PATH] === value)
-    if (isDuplicate) {
-      flashHint(`Đối tác ${value} đã có trong bảng. Mỗi đối tác chỉ được nhập một dòng.`)
-      return
-    }
-    updateCell(rowIndex, PARTNER_PATH, value)
-  }
-
   const handleNumericChange = (rowIndex: number, path: string, raw: string) => {
     if (isDecimalNumericPath(path)) {
       const { value, hadInvalid } = sanitizeDecimalInput(raw)
@@ -159,10 +148,6 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
   const duplicateRow = (index: number) => {
     const next = [...rows]
     const clone = { ...next[index] }
-    if (clone[PARTNER_PATH]) {
-      clone[PARTNER_PATH] = ''
-      flashHint('Dòng nhân bản đã bỏ trống đối tác để tránh trùng. Vui lòng chọn đối tác khác.')
-    }
     next.splice(index + 1, 0, clone)
     onChange(next)
   }
@@ -268,10 +253,6 @@ export function SpreadsheetTable({ period, rows, onChange }: SpreadsheetTablePro
                         <select
                           value={row[col.path] || ''}
                           onChange={(e) => {
-                            if (col.path === PARTNER_PATH) {
-                              handlePartnerChange(rIndex, e.target.value)
-                              return
-                            }
                             updateCell(rIndex, col.path, e.target.value)
                           }}
                           disabled={col.isReadOnly}

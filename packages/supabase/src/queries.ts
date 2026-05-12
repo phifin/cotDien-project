@@ -2,6 +2,7 @@ import { getSupabaseBrowserClient } from './client.js'
 import {
   parseImportedJson,
   parseSubmissionPayload,
+  normalizeSubmissionPayload,
   type MonthlyReportPayload,
   type ParsedSubmissionEntry,
   type SubmissionPayload,
@@ -119,7 +120,7 @@ function normalizeLegacyPayload(row: SubmissionRow, rawPayload: unknown = row.pa
   const poleQuantities = asRecord(payload.pole_quantities) ?? {}
   const notes = asRecord(payload.notes) ?? {}
 
-  return {
+  const legacyPayload: MonthlyReportPayload = {
     notes: {
       ghi_chu: typeof notes.ghi_chu === 'string' ? notes.ghi_chu : '',
     },
@@ -141,6 +142,7 @@ function normalizeLegacyPayload(row: SubmissionRow, rawPayload: unknown = row.pa
       opening_balance_by_year: toYearMap(execution.opening_balance_by_year),
     },
     debt_analysis: {
+      trong_han: toNumber(debtAnalysis.trong_han),
       duoi_6_thang: toNumber(debtAnalysis.duoi_6_thang),
       tu_6_den_duoi_12_thang: toNumber(debtAnalysis.tu_6_den_duoi_12_thang),
       tu_12_den_duoi_24_thang: toNumber(debtAnalysis.tu_12_den_duoi_24_thang),
@@ -158,6 +160,12 @@ function normalizeLegacyPayload(row: SubmissionRow, rawPayload: unknown = row.pa
       tren_12_5m: toNumber(poleQuantities.tren_12_5m),
     },
   }
+
+  return normalizeSubmissionPayload(
+    legacyPayload,
+    { pcCode: row.pc_code, pcName: getRowPcName(row) },
+    { year: getRowPeriodYear(row), month: getRowPeriodMonth(row) },
+  )
 }
 
 function buildEntry(row: SubmissionRow, data: MonthlyReportPayload, rowIndex: number): ParsedSubmissionEntry {
@@ -184,9 +192,18 @@ function parsePayloadRow(row: SubmissionRow, payloadRow: unknown): MonthlyReport
   return validated.ok ? validated.data : null
 }
 
-function mapSubmissionToParsedEntries(row: SubmissionRow): ParsedSubmissionEntry[] {
+function getSubmissionPayloadRows(row: SubmissionRow): unknown[] {
   const formPayload = parseSubmissionPayload(row.payload)
-  const payloadRows: unknown[] = formPayload.ok ? formPayload.data.rows : [row.payload]
+  if (formPayload.ok) return formPayload.data.rows
+
+  const payloadRecord = asRecord(row.payload)
+  if (Array.isArray(payloadRecord?.rows)) return payloadRecord.rows
+
+  return [row.payload]
+}
+
+function mapSubmissionToParsedEntries(row: SubmissionRow): ParsedSubmissionEntry[] {
+  const payloadRows = getSubmissionPayloadRows(row)
   const entries: ParsedSubmissionEntry[] = []
 
   payloadRows.forEach((payloadRow, rowIndex) => {

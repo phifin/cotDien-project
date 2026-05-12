@@ -1,15 +1,17 @@
 import { useState, useMemo } from 'react'
 import useSWR from 'swr'
 import { fetchSubmissionsByPeriodWithDebug } from '@repo/supabase/queries'
-import { mergeMonthlySubmissions, applyFilters, buildStatsModel, getInitialFilterState, sanitizeFilterState, type FilterState } from '@repo/shared/domain'
+import { mergeMonthlySubmissions, applyFilters, buildStatsModel, buildDashboardTableModel, getInitialFilterState, sanitizeFilterState, type FilterState, type MergedMonthlyDataset } from '@repo/shared/domain'
 
 import { DashboardTable } from './components/DashboardTable'
+import { DASHBOARD_TARGET_YEARS } from './lib/dashboardTableConfig'
 import { FilterModal } from './modals/FilterModal'
 import { StatsOverviewModal } from './modals/StatsOverviewModal'
 import { CompareView } from './views/CompareView'
 import { KeyManagerView } from './views/KeyManagerView'
+import { ReportTimelinessView } from './views/ReportTimelinessView'
 
-import { LayoutDashboard, Filter, BarChart3, Scale, KeyRound, RefreshCw } from 'lucide-react'
+import { LayoutDashboard, Filter, BarChart3, Scale, KeyRound, RefreshCw, Clock3, FileSpreadsheet } from 'lucide-react'
 
 const fetcher = async ({ y, m }: { y: number, m: number }) => {
   const { entries, debug } = await fetchSubmissionsByPeriodWithDebug(y, m, { includeDebugPayloads: import.meta.env.DEV })
@@ -23,9 +25,38 @@ function getCurrentPeriod() {
   return { year: now.getFullYear(), month: now.getMonth() + 1 }
 }
 
+function buildDashboardExportRows(dataset: MergedMonthlyDataset): Array<Record<string, string | number>> {
+  const table = buildDashboardTableModel(dataset, DASHBOARD_TARGET_YEARS)
+
+  return table.rows.map((row, index) => {
+    const record: Record<string, string | number> = {
+      STT: index + 1,
+      'Mã Đơn Vị (PC)': row.pcCode,
+      'Trạng Thái': row.status,
+    }
+
+    for (const col of table.columns) {
+      record[col.label] = row.values[col.path] ?? ''
+    }
+
+    return record
+  })
+}
+
+async function exportDashboardExcel(dataset: MergedMonthlyDataset): Promise<void> {
+  const XLSX = await import('xlsx')
+  const worksheet = XLSX.utils.json_to_sheet(buildDashboardExportRows(dataset))
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Dashboard')
+  XLSX.writeFile(
+    workbook,
+    `EVNSPC_dashboard_${String(dataset.period.year)}_${String(dataset.period.month)}.xlsx`,
+  )
+}
+
 export default function App() {
   const [period, setPeriod] = useState(getCurrentPeriod)
-  const [activeView, setActiveView] = useState<'table' | 'compare' | 'keys'>('table')
+  const [activeView, setActiveView] = useState<'table' | 'compare' | 'keys' | 'timeliness'>('table')
   
   const [filterState, setFilterState] = useState<FilterState>({})
   const [showFilterModal, setShowFilterModal] = useState(false)
@@ -66,6 +97,10 @@ export default function App() {
 
   if (activeView === 'keys') {
     return <KeyManagerView onBack={() => { setActiveView('table'); }} />
+  }
+
+  if (activeView === 'timeliness') {
+    return <ReportTimelinessView period={period} onBack={() => { setActiveView('table'); }} />
   }
 
   return (
@@ -130,6 +165,21 @@ export default function App() {
           
           <button onClick={() => { setActiveView('compare'); }} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors">
             <Scale className="w-4 h-4 text-blue-600" /> Công Cụ So Sánh
+          </button>
+
+          <button onClick={() => { setActiveView('timeliness'); }} className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors">
+            <Clock3 className="w-4 h-4 text-amber-600" /> Tiến Độ Nộp
+          </button>
+
+          <button
+            onClick={() => {
+              if (!filteredDataset) return
+              void exportDashboardExcel(filteredDataset)
+            }}
+            disabled={!filteredDataset}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium bg-white text-slate-700 border border-slate-300 rounded hover:bg-slate-50 transition-colors disabled:opacity-50"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" /> Xuất Excel
           </button>
         </div>
 

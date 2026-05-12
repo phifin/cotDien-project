@@ -2,6 +2,11 @@ import type { ZodError } from 'zod'
 import { ok, err, type Result } from '../types/index.js'
 import { MonthlyReportPayloadSchema, SubmissionPayloadSchema } from './schema.js'
 import type { MonthlyReportPayload, PcIdentity, ReportPeriod, SubmissionPayload } from './types.js'
+import {
+  COLLECTED_REVENUE_YEARS,
+  GENERATED_REVENUE_YEARS,
+  OPENING_BALANCE_YEARS,
+} from './constants.js'
 
 function coerceNumber(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -19,6 +24,17 @@ function coerceYearMap(value: unknown): Record<string, number> {
   const out: Record<string, number> = {}
   for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
     if (/^\d{4}$/.test(k)) out[k] = coerceNumber(v)
+  }
+  return out
+}
+
+function ensureYearDefaults(
+  value: Record<string, number>,
+  requiredYears: readonly string[],
+): Record<string, number> {
+  const out = { ...value }
+  for (const year of requiredYears) {
+    out[year] = coerceNumber(out[year])
   }
   return out
 }
@@ -78,11 +94,21 @@ export function normalizeSubmissionPayload(
     },
     execution: {
       closing_balance: coerceNumber(safeData.execution?.closing_balance),
-      generated_by_year: coerceYearMap(safeData.execution?.generated_by_year),
-      collected_by_year: coerceYearMap(safeData.execution?.collected_by_year),
-      opening_balance_by_year: coerceYearMap(safeData.execution?.opening_balance_by_year),
+      generated_by_year: ensureYearDefaults(
+        coerceYearMap(safeData.execution?.generated_by_year),
+        GENERATED_REVENUE_YEARS,
+      ),
+      collected_by_year: ensureYearDefaults(
+        coerceYearMap(safeData.execution?.collected_by_year),
+        COLLECTED_REVENUE_YEARS,
+      ),
+      opening_balance_by_year: ensureYearDefaults(
+        coerceYearMap(safeData.execution?.opening_balance_by_year),
+        OPENING_BALANCE_YEARS,
+      ),
     },
     debt_analysis: {
+      trong_han: coerceNumber(safeData.debt_analysis?.trong_han),
       duoi_6_thang: coerceNumber(safeData.debt_analysis?.duoi_6_thang),
       tu_6_den_duoi_12_thang: coerceNumber(safeData.debt_analysis?.tu_6_den_duoi_12_thang),
       tu_12_den_duoi_24_thang: coerceNumber(safeData.debt_analysis?.tu_12_den_duoi_24_thang),

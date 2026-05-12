@@ -30,8 +30,16 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [creating, setCreating] = useState(false)
+  const [bulkCreating, setBulkCreating] = useState(false)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [generatedLinks, setGeneratedLinks] = useState<Array<{
+    pcCode: string
+    pcName: string
+    accessKey: string
+    url: string
+    reused: boolean
+  }>>([])
 
   const { data, isLoading, mutate } = useSWR('key-manager-data', async () => {
     const [keys, pcs] = await Promise.all([listFormKeys(), listPcs()])
@@ -51,6 +59,15 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
     return `${code.toLowerCase()}-${String(reportMonth)}${String(reportYear)}-${random}`
   }
 
+  const findActiveKeyForPeriod = (code: string): FormKeyRow | undefined => {
+    return keys.find((key) => (
+      key.pc_code === code
+      && key.report_year === year
+      && key.report_month === month
+      && key.is_active
+    ))
+  }
+
   const handleCreate = async () => {
     if (!pcCode) {
       setErrorMsg('Vui lòng chọn đơn vị PC.')
@@ -58,19 +75,87 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
     }
     setCreating(true)
     setErrorMsg(null)
+    setGeneratedLinks([])
     try {
-      await createFormKey({
+      const existing = findActiveKeyForPeriod(pcCode)
+      if (existing) {
+        setGeneratedLinks([{
+          pcCode,
+          pcName: selectedPcName,
+          accessKey: existing.access_key,
+          url: buildFormAppUrl(existing.access_key),
+          reused: true,
+        }])
+        return
+      }
+
+      const created = await createFormKey({
         accessKey: generateAccessKey(pcCode, year, month),
         pcCode,
         reportMonth: month,
         reportYear: year,
         isActive: true,
       })
+      setGeneratedLinks([{
+        pcCode,
+        pcName: selectedPcName,
+        accessKey: created.access_key,
+        url: buildFormAppUrl(created.access_key),
+        reused: false,
+      }])
       await mutate()
     } catch (error) {
       setErrorMsg(error instanceof Error ? error.message : 'Không thể tạo key mới.')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleBulkCreate = async () => {
+    if (pcs.length === 0) {
+      setErrorMsg('Chưa có danh sách PC để phát hành token.')
+      return
+    }
+
+    setBulkCreating(true)
+    setErrorMsg(null)
+    setGeneratedLinks([])
+    try {
+      const links = await Promise.all(pcs.map(async (pc) => {
+        const existing = findActiveKeyForPeriod(pc.pc_code)
+        if (existing) {
+          return {
+            pcCode: pc.pc_code,
+            pcName: pc.pc_name,
+            accessKey: existing.access_key,
+            url: buildFormAppUrl(existing.access_key),
+            reused: true,
+          }
+        }
+
+        const created = await createFormKey({
+          accessKey: generateAccessKey(pc.pc_code, year, month),
+          pcCode: pc.pc_code,
+          reportMonth: month,
+          reportYear: year,
+          isActive: true,
+        })
+
+        return {
+          pcCode: pc.pc_code,
+          pcName: pc.pc_name,
+          accessKey: created.access_key,
+          url: buildFormAppUrl(created.access_key),
+          reused: false,
+        }
+      }))
+
+      setGeneratedLinks(links)
+      await mutate()
+    } catch (error) {
+      setErrorMsg(error instanceof Error ? error.message : 'Không thể phát hành token hàng loạt.')
+    } finally {
+      setBulkCreating(false)
     }
   }
 
@@ -90,6 +175,12 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
   const copyRef = (token: string) => {
     void navigator.clipboard.writeText(buildFormAppUrl(token))
     alert('Đã copy đường dẫn Form App!')
+  }
+
+  const copyGeneratedLinks = () => {
+    const content = generatedLinks.map((link) => `${link.pcCode} - ${link.pcName}: ${link.url}`).join('\n')
+    void navigator.clipboard.writeText(content)
+    alert('Đã copy danh sách đường dẫn Form App!')
   }
 
   return (
@@ -139,6 +230,14 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
                >
                  <Plus className="w-4 h-4"/> Phát Hành Token
                </button>
+
+               <button
+                 onClick={() => { void handleBulkCreate() }}
+                 disabled={bulkCreating || pcs.length === 0}
+                 className="h-10 px-4 bg-emerald-600 text-white rounded font-medium text-sm hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors shadow-sm"
+               >
+                 <Plus className="w-4 h-4"/> Phát Hành Tất Cả PC
+               </button>
             </div>
             {pcCode && (
               <p className="mt-3 text-xs text-slate-500">
@@ -149,6 +248,38 @@ export function KeyManagerView({ onBack }: { onBack: () => void }) {
               <p className="mt-3 text-sm text-red-600">{errorMsg}</p>
             )}
           </div>
+
+          {generatedLinks.length > 0 && (
+            <div className="bg-white border border-emerald-200 rounded-xl shadow-sm p-6">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h3 className="text-sm font-semibold text-slate-800">Đường Dẫn Form Vừa Phát Hành</h3>
+                <button
+                  onClick={copyGeneratedLinks}
+                  className="px-3 py-2 text-sm font-medium bg-white border border-emerald-300 rounded hover:bg-emerald-50 transition-colors text-emerald-700 inline-flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4" /> Copy tất cả
+                </button>
+              </div>
+              <div className="space-y-2">
+                {generatedLinks.map((link) => (
+                  <div key={`${link.pcCode}-${link.accessKey}`} className="flex items-center gap-3 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                    <div className="w-36 shrink-0 font-mono font-medium text-slate-800">{link.pcCode}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-slate-500">{link.pcName} {link.reused ? '(đã có token active)' : '(token mới)'}</div>
+                      <div className="truncate font-mono text-xs text-slate-600">{link.url}</div>
+                    </div>
+                    <button
+                      onClick={() => { void navigator.clipboard.writeText(link.url) }}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded bg-white border border-blue-200 transition-colors"
+                      title="Copy URL"
+                    >
+                      <Copy className="w-4 h-4"/>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
              <table className="w-full text-left text-sm whitespace-nowrap">

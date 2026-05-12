@@ -13,12 +13,13 @@
   "dependencies": {
     "@repo/shared": "workspace:*",
     "@repo/supabase": "workspace:*",
+    "clsx": "^2.1.0",
+    "lucide-react": "^0.300.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "lucide-react": "^0.300.0",
     "swr": "^2.2.0",
-    "clsx": "^2.1.0",
-    "tailwind-merge": "^2.2.0"
+    "tailwind-merge": "^2.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

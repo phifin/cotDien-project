@@ -39,6 +39,7 @@ export const ExecutionSchema = z.object({
 })
 
 export const DebtAnalysisSchema = z.object({
+  trong_han: z.number(),
   duoi_6_thang: z.number(),
   tu_6_den_duoi_12_thang: z.number(),
   tu_12_den_duoi_24_thang: z.number(),

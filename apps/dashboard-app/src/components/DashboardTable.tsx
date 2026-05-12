@@ -2,8 +2,7 @@ import type { MergedMonthlyDataset } from '@repo/shared/domain'
 import { buildDashboardTableModel } from '@repo/shared/domain'
 import { cn } from '@repo/shared/utils'
 import { useMemo } from 'react'
-
-const DASHBOARD_TARGET_YEARS = [2024, 2025, 2026]
+import { DASHBOARD_TARGET_YEARS } from '../lib/dashboardTableConfig'
 
 function buildGroupedColumns<T extends { section: string }>(columns: T[]): Array<{ label: string; cols: T[] }> {
   const groups: Array<{ label: string; cols: T[] }> = []

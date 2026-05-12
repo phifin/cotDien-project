@@ -83,7 +83,8 @@ export function mergeMonthlySubmissions(
       + d.pole_quantities.tu_8_5_den_10_5m
       + d.pole_quantities.tu_10_5_den_12_5m
       + d.pole_quantities.tren_12_5m
-    summary.totalDebtAging += d.debt_analysis.duoi_6_thang
+    summary.totalDebtAging += d.debt_analysis.trong_han
+      + d.debt_analysis.duoi_6_thang
       + d.debt_analysis.tu_6_den_duoi_12_thang
       + d.debt_analysis.tu_12_den_duoi_24_thang
       + d.debt_analysis.tu_24_den_duoi_36_thang

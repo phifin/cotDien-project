@@ -3,7 +3,7 @@ import { AccessProvider } from './contexts/AccessContext'
 import { useAccess } from './contexts/accessContext'
 import { SpreadsheetTable } from './components/SpreadsheetTable'
 import { useDraftStorage } from './hooks/useDraftStorage'
-import { FileUp, FileDown, Save, Send } from 'lucide-react'
+import { FileSpreadsheet, FileUp, FileDown, Save, Send } from 'lucide-react'
 
 // Utilities from shared packages
 import {
@@ -13,6 +13,7 @@ import {
   parseSubmissionPayload,
   validateImportedJsonAgainstContext,
   hydrateFormFromCanonical,
+  validateDebtClassificationBalances,
   type MonthlyReportPayload,
   type SubmissionPayload,
   resolveYearlyPlannedRevenue,
@@ -57,6 +58,20 @@ function getNestedValue(source: unknown, path: string): unknown {
   }, source)
 }
 
+function hasReportShapeHint(item: unknown): boolean {
+  if (!item || typeof item !== 'object' || Array.isArray(item)) return false
+  const record = item as Record<string, unknown>
+  return [
+    'notes',
+    'general',
+    'contract',
+    'execution',
+    'debt_analysis',
+    'revenue_result',
+    'pole_quantities',
+  ].some((key) => key in record)
+}
+
 function canonicalToFlatRow(payload: MonthlyReportPayload, targetYears: number[]): Record<string, string> {
   const columns = resolveVisibleColumns(MONTHLY_REPORT_FORM_DEFS, targetYears)
   const row: Record<string, string> = {}
@@ -98,17 +113,6 @@ function canonicalizeRows(
       { pcCode: access.pcCode, pcName: access.pcName },
       { year: access.period.year, month: access.period.month },
     ))
-}
-
-function findDuplicatePartner(rows: MonthlyReportPayload[]): string | null {
-  const seen = new Set<string>()
-  for (const row of rows) {
-    const partner = row.general.doi_tac.trim()
-    if (!partner) continue
-    if (seen.has(partner)) return partner
-    seen.add(partner)
-  }
-  return null
 }
 
 function buildSubmissionPayload(
@@ -166,6 +170,45 @@ function toCsv(records: Array<Record<string, string | number | null>>): string {
     lines.push(serialized.join(','))
   }
   return `\uFEFF${lines.join('\n')}`
+}
+
+async function downloadExcel(records: Array<Record<string, string | number | null>>, fileName: string): Promise<void> {
+  const XLSX = await import('xlsx')
+  const worksheet = XLSX.utils.json_to_sheet(records)
+  const workbook = XLSX.utils.book_new()
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Bao cao')
+  XLSX.writeFile(workbook, fileName)
+}
+
+function excelValueToString(value: unknown): string {
+  if (value == null) return ''
+  if (value instanceof Date) return value.toISOString().slice(0, 10)
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
+  return ''
+}
+
+function excelRowsToFlatRows(
+  records: Array<Record<string, unknown>>,
+  targetYears: number[],
+): Array<Record<string, string>> {
+  const columns = resolveVisibleColumns(MONTHLY_REPORT_FORM_DEFS, targetYears)
+  const headerToPath = new Map<string, string>()
+
+  for (const col of columns) {
+    headerToPath.set(col.label.trim(), col.path)
+    headerToPath.set(col.path, col.path)
+  }
+
+  return records.map((record) => {
+    const row: Record<string, string> = {}
+    for (const [header, value] of Object.entries(record)) {
+      const path = headerToPath.get(header.trim())
+      if (path) row[path] = excelValueToString(value).trim()
+    }
+    return row
+  })
 }
 
 async function notifyTelegramSubmission(input: {
@@ -260,6 +303,21 @@ function FormApp() {
     }
   }
 
+  const handleExportExcel = async () => {
+    try {
+      const payload = buildSubmissionPayload(rows, access, yearlyPlannedRevenue)
+      if (payload.rows.length === 0) return
+
+      const flatRecords = buildCsvExportData(payload.rows, targetYears)
+      await downloadExcel(
+        flatRecords,
+        `EVNSPC_${access.pcCode}_${String(access.period.year)}_${String(access.period.month)}.xlsx`,
+      )
+    } catch {
+      alert('Lỗi xuất Excel. Bảng dữ liệu có thể không hợp lệ.')
+    }
+  }
+
   const handleExportJson = () => {
     try {
       const payload = buildSubmissionPayload(rows, access, yearlyPlannedRevenue)
@@ -288,9 +346,15 @@ function FormApp() {
          setErrorMsg('Chưa có dòng dữ liệu nào để gửi.')
          return
        }
-       const duplicatePartner = findDuplicatePartner(payload.rows)
-       if (duplicatePartner) {
-         setErrorMsg(`Đối tác ${duplicatePartner} bị trùng. Mỗi đối tác chỉ được gửi một dòng.`)
+
+       const debtValidationErrors = validateDebtClassificationBalances(payload.rows)
+       if (debtValidationErrors.length > 0) {
+         const firstError = debtValidationErrors[0]
+         if (firstError) {
+           setErrorMsg(
+             `Dòng ${String(firstError.rowNumber)} chưa cân bằng: Tồn cuối kỳ ${firstError.closingBalance.toLocaleString()} phải bằng tổng phân tích nợ ${firstError.classificationTotal.toLocaleString()}. Vui lòng kiểm tra các cột phân tích nợ.`,
+           )
+         }
          return
        }
 
@@ -322,68 +386,105 @@ function FormApp() {
     }
   }
 
-  // Action: Import JSON
-  const handleImportJson = (e: ChangeEvent<HTMLInputElement>) => {
+  function parseImportItem(item: unknown): MonthlyReportPayload | null {
+    const parsed = parseImportedJson(item)
+    if (parsed.ok) return hydrateFormFromCanonical(parsed.data)
+    if (!hasReportShapeHint(item)) return null
+
+    const normalized = normalizeSubmissionPayload(
+      item,
+      { pcCode: access.pcCode, pcName: access.pcName },
+      { year: access.period.year, month: access.period.month },
+    )
+    const fallbackParsed = parseImportedJson(normalized)
+    return fallbackParsed.ok ? hydrateFormFromCanonical(fallbackParsed.data) : null
+  }
+
+  const importCanonicalRows = (items: unknown[], sourceLabel: string) => {
+    if (items.length === 0) {
+      alert(`Không có dữ liệu hợp lệ trong file ${sourceLabel}.`)
+      return
+    }
+
+    const importedRows: Array<Record<string, string>> = []
+
+    for (const item of items) {
+      const hydrated = parseImportItem(item)
+      if (!hydrated) {
+        alert(`${sourceLabel} không đúng cấu trúc dữ liệu báo cáo.`)
+        return
+      }
+
+      const contextCheck = validateImportedJsonAgainstContext(hydrated, {
+        expectedPcCode: access.pcCode,
+        expectedYear: access.period.year,
+        expectedMonth: access.period.month,
+      })
+
+      if (!contextCheck.ok) {
+        const details = contextCheck.error.map((mismatch) => mismatch.message).join('\n')
+        alert(`Không thể import do sai ngữ cảnh:\n${details}`)
+        return
+      }
+
+      importedRows.push(canonicalToFlatRow(hydrated, targetYears))
+    }
+
+    setRows(applyContextDerivedValues(importedRows))
+    alert(`Đã import ${String(importedRows.length)} dòng dữ liệu.`)
+  }
+
+  async function importExcelFile(file: File): Promise<void> {
+    const XLSX = await import('xlsx')
+    const buffer = await file.arrayBuffer()
+    const workbook = XLSX.read(buffer, { type: 'array', cellDates: true })
+    const sheetName = workbook.SheetNames[0]
+    if (!sheetName) {
+      alert('File Excel không có sheet dữ liệu.')
+      return
+    }
+
+    const worksheet = workbook.Sheets[sheetName]
+    if (!worksheet) {
+      alert('File Excel không có sheet dữ liệu.')
+      return
+    }
+
+    const records = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' })
+    const flatRows = excelRowsToFlatRows(records, targetYears).filter(hasUserEnteredData)
+    const items = flatRows.map((row) => normalizeSubmissionPayload(
+      unflattenRow(row),
+      { pcCode: access.pcCode, pcName: access.pcName },
+      { year: access.period.year, month: access.period.month },
+    ))
+    importCanonicalRows(items, 'Excel')
+  }
+
+  async function importJsonFile(file: File): Promise<void> {
+    const rawResult = await file.text()
+    const data: unknown = JSON.parse(rawResult)
+    importCanonicalRows(getImportItems(data), 'JSON')
+  }
+
+  // Action: Import JSON / Excel
+  const handleImportFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const input = e.target
 
-    const reader = new FileReader()
-    reader.onload = (event) => {
+    void (async () => {
       try {
-         const rawResult = event.target?.result
-         if (typeof rawResult !== 'string') {
-           alert('File JSON không hợp lệ.')
-           return
-         }
-
-         const data: unknown = JSON.parse(rawResult)
-         const importItems = getImportItems(data)
-
-         if (importItems.length === 0) {
-           alert('Không có dữ liệu hợp lệ trong file JSON.')
-           return
-         }
-
-         const importedRows: Array<Record<string, string>> = []
-         const importedPartners = new Set<string>()
-
-         for (const item of importItems) {
-           const parsed = parseImportedJson(item)
-           if (!parsed.ok) {
-             alert('JSON không đúng cấu trúc canonical.')
-             return
-           }
-
-           const contextCheck = validateImportedJsonAgainstContext(parsed.data, {
-             expectedPcCode: access.pcCode,
-             expectedYear: access.period.year,
-             expectedMonth: access.period.month,
-           })
-
-           if (!contextCheck.ok) {
-             const details = contextCheck.error.map((mismatch) => mismatch.message).join('\n')
-             alert(`Không thể import do sai ngữ cảnh:\n${details}`)
-             return
-           }
-
-           const hydrated = hydrateFormFromCanonical(parsed.data)
-           const partner = hydrated.general.doi_tac.trim()
-           if (partner && importedPartners.has(partner)) {
-             alert(`File import có đối tác bị trùng: ${partner}. Mỗi đối tác chỉ được nhập một dòng.`)
-             return
-           }
-           if (partner) importedPartners.add(partner)
-           importedRows.push(canonicalToFlatRow(hydrated, targetYears))
-         }
-
-         setRows(applyContextDerivedValues(importedRows))
-         alert(`Đã import ${String(importedRows.length)} dòng dữ liệu canonical.`)
+        if (/\.(xlsx|xls)$/i.test(file.name)) {
+          await importExcelFile(file)
+          return
+        }
+        await importJsonFile(file)
       } catch {
-         alert('File JSON không hợp lệ.')
+        alert('File import không hợp lệ.')
+      } finally {
+        input.value = ''
       }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
+    })()
   }
 
   return (
@@ -406,10 +507,10 @@ function FormApp() {
               Trạng thái lưu: <span className="font-medium text-slate-700">Tự động</span>
             </div>
             <div className="flex items-center gap-2">
-              <input type="file" accept=".json" className="hidden" ref={fileInputRef} onChange={handleImportJson} />
+              <input type="file" accept=".json,.xlsx,.xls" className="hidden" ref={fileInputRef} onChange={handleImportFile} />
 
               <button onClick={() => fileInputRef.current?.click()} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
-                <FileUp className="w-4 h-4" /> Import JSON
+                <FileUp className="w-4 h-4" /> Import JSON/Excel
               </button>
 
               <button onClick={handleExportJson} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
@@ -418,6 +519,10 @@ function FormApp() {
 
               <button onClick={handleExportCsv} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
                 <FileDown className="w-4 h-4" /> Tải CSV
+              </button>
+
+              <button onClick={() => { void handleExportExcel() }} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
+                <FileSpreadsheet className="w-4 h-4" /> Tải Excel
               </button>
 
               <button onClick={() => { saveDraft(rows) }} className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50 transition-colors">
@@ -470,6 +575,9 @@ function FormApp() {
                 {(yearlyPlannedRevenue ?? 0).toLocaleString()} VND
               </div>
             </div>
+          </div>
+          <div className="mt-3 border-t border-slate-100 pt-3 text-xs leading-5 text-slate-500">
+            Tồn đầu kỳ 2023/2024/2025 giữ cố định giữa các tháng báo cáo. Nếu gửi lại cùng PC/kỳ, hệ thống vẫn lưu thêm bản ghi mới và dashboard lấy lần gửi mới nhất làm báo cáo hiệu lực.
           </div>
         </div>
         <SpreadsheetTable 

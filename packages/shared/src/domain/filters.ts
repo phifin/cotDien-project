@@ -1,4 +1,5 @@
 import { mergeMonthlySubmissions, type MergedMonthlyDataset } from './merger.js'
+import { calculateDebtBreakdown } from './debt.js'
 
 /**
  * Frontend-oriented filter state definition.
@@ -77,21 +78,13 @@ export function applyFilters(
 
     // 3. Debt Presence
     if (hasDebt !== undefined) {
-      const hasStrictDebt = d.debt_analysis.duoi_6_thang > 0
-        || d.debt_analysis.tu_6_den_duoi_12_thang > 0
-        || d.debt_analysis.tu_12_den_duoi_24_thang > 0
-        || d.debt_analysis.tu_24_den_duoi_36_thang > 0
-        || d.debt_analysis.tren_36_thang > 0
+      const hasStrictDebt = d.execution.closing_balance > 0
       if (hasDebt !== hasStrictDebt) return false
     }
 
     // 4. Debt Range
     if (debtRange) {
-      const totalDebt = d.debt_analysis.duoi_6_thang
-        + d.debt_analysis.tu_6_den_duoi_12_thang
-        + d.debt_analysis.tu_12_den_duoi_24_thang
-        + d.debt_analysis.tu_24_den_duoi_36_thang
-        + d.debt_analysis.tren_36_thang
+      const totalDebt = calculateDebtBreakdown(d).totalDebt
       if (debtRange.min !== undefined && totalDebt < debtRange.min) return false
       if (debtRange.max !== undefined && totalDebt > debtRange.max) return false
     }

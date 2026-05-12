@@ -1,11 +1,12 @@
 import { useState, useMemo } from 'react'
 import useSWR from 'swr'
 import { fetchSubmissionsForCompare } from '@repo/supabase/queries'
-import { mergeMonthlySubmissions, compareMergedDatasets } from '@repo/shared/domain'
+import { mergeMonthlySubmissions, compareMergedDatasets, PARTNER_CATEGORY_CODES, PARTNER_CATEGORY_LABELS, type NumericDiff } from '@repo/shared/domain'
 import { ArrowLeft, ArrowRight, TrendingUp, TrendingDown, Minus } from 'lucide-react'
 
 // Generic period struct
 type Period = { year: number, month: number }
+type MetricRow = { metric: string; diff: NumericDiff; invert?: boolean; isRate?: boolean }
 
 const fetcher = async ({ periodA, periodB }: { periodA: Period, periodB: Period }) => {
   const { monthA, monthB } = await fetchSubmissionsForCompare(periodA, periodB)
@@ -61,39 +62,65 @@ export function CompareView({ onBack }: { onBack: () => void }) {
         { metric: 'VTVCAB', diff: d.revenue.byMajorPartner.VTVCAB, invert: false },
         { metric: 'SCTV', diff: d.revenue.byMajorPartner.SCTV, invert: false },
       ],
+      revenueCategories: PARTNER_CATEGORY_CODES.map((category) => ({
+        metric: PARTNER_CATEGORY_LABELS[category],
+        diff: d.revenue.byCategory[category],
+        invert: false,
+      })),
       poles: [
         { metric: 'Tổng số lượng cột', diff: d.poles.total, invert: false },
-        { metric: 'Cột dưới 8.5m', diff: d.poles.buckets.duoi_8_5m, invert: false },
-        { metric: 'Cột trên 12.5m', diff: d.poles.buckets.tren_12_5m, invert: false },
+        { metric: 'Dưới 8.5m', diff: d.poles.buckets.duoi_8_5m, invert: false },
+        { metric: 'Từ 12.5m trở lên', diff: d.poles.buckets.tren_12_5m, invert: false },
       ],
+      poleCategories: PARTNER_CATEGORY_CODES.map((category) => ({
+        metric: PARTNER_CATEGORY_LABELS[category],
+        diff: d.poles.byCategory[category].total,
+        invert: false,
+      })),
       debt: [
-        { metric: 'Tổng công nợ', diff: d.debt.total, invert: true },
-        { metric: 'Nợ dưới 6 tháng', diff: d.debt.agingBuckets.duoi_6_thang, invert: true },
-        { metric: 'Nợ 6-12 tháng', diff: d.debt.agingBuckets.tu_6_den_duoi_12_thang, invert: true },
-        { metric: 'Nợ 12-24 tháng', diff: d.debt.agingBuckets.tu_12_den_duoi_24_thang, invert: true },
-        { metric: 'Nợ 24-36 tháng', diff: d.debt.agingBuckets.tu_24_den_duoi_36_thang, invert: true },
-        { metric: 'Nợ trên 36 tháng', diff: d.debt.agingBuckets.tren_36_thang, invert: true },
+        { metric: 'Tổng công nợ toàn TCT', diff: d.debt.breakdown.totalDebt, invert: true },
+        { metric: 'Tổng nợ tồn năm 2023 đến kỳ báo cáo', diff: d.debt.breakdown.debt2023, invert: true },
+        { metric: 'Tổng nợ tồn năm 2024 đến kỳ báo cáo', diff: d.debt.breakdown.debt2024, invert: true },
+        { metric: 'Tổng nợ tồn năm 2025 đến kỳ báo cáo', diff: d.debt.breakdown.debt2025, invert: true },
+        { metric: 'Tổng nợ phải thu năm 2026 đến kỳ báo cáo', diff: d.debt.breakdown.debt2026, invert: true },
       ],
+      debtCategories: PARTNER_CATEGORY_CODES.flatMap((category) => [
+        {
+          metric: `${PARTNER_CATEGORY_LABELS[category]} - Tổng công nợ`,
+          diff: d.debt.byCategory[category].totalDebt,
+          invert: true,
+        },
+        {
+          metric: `${PARTNER_CATEGORY_LABELS[category]} - Nợ 2026`,
+          diff: d.debt.byCategory[category].debt2026,
+          invert: true,
+        },
+      ]),
       difficultPartners: [
         { metric: 'VTVCAB - Tổng doanh thu', diff: d.difficultPartners.VTVCAB.totalRevenue, invert: false },
-        { metric: 'VTVCAB - Tổng nợ', diff: d.difficultPartners.VTVCAB.totalDebt, invert: true },
-        { metric: 'VTVCAB - Nợ dưới 6 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.duoi_6_thang, invert: true },
-        { metric: 'VTVCAB - Nợ trên 36 tháng', diff: d.difficultPartners.VTVCAB.agingBuckets.tren_36_thang, invert: true },
+        { metric: 'VTVCAB - Tổng công nợ toàn TCT', diff: d.difficultPartners.VTVCAB.debtBreakdown.totalDebt, invert: true },
+        { metric: 'VTVCAB - Tổng nợ tồn năm 2023', diff: d.difficultPartners.VTVCAB.debtBreakdown.debt2023, invert: true },
+        { metric: 'VTVCAB - Tổng nợ tồn năm 2024', diff: d.difficultPartners.VTVCAB.debtBreakdown.debt2024, invert: true },
+        { metric: 'VTVCAB - Tổng nợ tồn năm 2025', diff: d.difficultPartners.VTVCAB.debtBreakdown.debt2025, invert: true },
+        { metric: 'VTVCAB - Tổng nợ phải thu năm 2026', diff: d.difficultPartners.VTVCAB.debtBreakdown.debt2026, invert: true },
         { metric: 'SCTV - Tổng doanh thu', diff: d.difficultPartners.SCTV.totalRevenue, invert: false },
-        { metric: 'SCTV - Tổng nợ', diff: d.difficultPartners.SCTV.totalDebt, invert: true },
-        { metric: 'SCTV - Nợ dưới 6 tháng', diff: d.difficultPartners.SCTV.agingBuckets.duoi_6_thang, invert: true },
-        { metric: 'SCTV - Nợ trên 36 tháng', diff: d.difficultPartners.SCTV.agingBuckets.tren_36_thang, invert: true },
+        { metric: 'SCTV - Tổng công nợ toàn TCT', diff: d.difficultPartners.SCTV.debtBreakdown.totalDebt, invert: true },
+        { metric: 'SCTV - Tổng nợ tồn năm 2023', diff: d.difficultPartners.SCTV.debtBreakdown.debt2023, invert: true },
+        { metric: 'SCTV - Tổng nợ tồn năm 2024', diff: d.difficultPartners.SCTV.debtBreakdown.debt2024, invert: true },
+        { metric: 'SCTV - Tổng nợ tồn năm 2025', diff: d.difficultPartners.SCTV.debtBreakdown.debt2025, invert: true },
+        { metric: 'SCTV - Tổng nợ phải thu năm 2026', diff: d.difficultPartners.SCTV.debtBreakdown.debt2026, invert: true },
       ],
     }
   }, [data])
   const diffSummary = data?.diff ?? null
 
   const formatValue = (value: number, isRate?: boolean) => (isRate ? `${(value * 100).toFixed(2)}%` : value.toLocaleString())
+  const formatPercentChange = (value: number | null) => (value == null ? 'N/A' : `${(value * 100).toFixed(2)}%`)
   const shouldRenderRow = (delta: number) => !showOnlyDiffs || delta !== 0
 
   const renderMetricTable = (
     title: string,
-    rows: Array<{ metric: string; diff: { valueA: number; valueB: number; delta: number }; invert?: boolean; isRate?: boolean }>,
+    rows: MetricRow[],
   ) => (
     <div className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden">
       <div className="bg-slate-50 border-b border-slate-200 px-5 py-3">
@@ -106,6 +133,7 @@ export function CompareView({ onBack }: { onBack: () => void }) {
             <th className="px-5 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">Kỳ A ({periodA.month}/{periodA.year})</th>
             <th className="px-5 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">Kỳ B ({periodB.month}/{periodB.year})</th>
             <th className="px-5 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">Delta (B - A)</th>
+            <th className="px-5 py-3 font-semibold text-slate-600 border-b border-slate-200 text-right">% thay đổi</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
@@ -119,6 +147,7 @@ export function CompareView({ onBack }: { onBack: () => void }) {
                 <td className="px-5 py-3 text-right">
                   <DeltaBadge val={row.diff.delta} inverted={Boolean(row.invert)} />
                 </td>
+                <td className="px-5 py-3 text-right font-mono text-slate-500">{formatPercentChange(row.diff.percentChange)}</td>
               </tr>
             ))}
         </tbody>
@@ -199,8 +228,11 @@ export function CompareView({ onBack }: { onBack: () => void }) {
 
             {renderMetricTable('Doanh thu', comparisonRows.revenue)}
             {renderMetricTable('Doanh thu theo đối tác lớn', comparisonRows.partners)}
+            {renderMetricTable('Doanh thu theo nhóm đối tác', comparisonRows.revenueCategories)}
             {renderMetricTable('Số lượng cột', comparisonRows.poles)}
+            {renderMetricTable('Số lượng cột theo nhóm đối tác', comparisonRows.poleCategories)}
             {renderMetricTable('Công nợ', comparisonRows.debt)}
+            {renderMetricTable('Công nợ theo nhóm đối tác', comparisonRows.debtCategories)}
             {renderMetricTable('Đối tác khó đòi', comparisonRows.difficultPartners)}
 
           </div>
